@@ -21,6 +21,8 @@ class AIProviderFactory:
     _registry: dict[str, str] = {
         "openai": "app.providers.ai.openai_provider.OpenAIProvider",
         "google": "app.providers.ai.google_provider.GoogleProvider",
+        "anthropic": "app.providers.ai.anthropic_provider.AnthropicProvider",
+        "ollama": "app.providers.ai.ollama_provider.OllamaProvider",
     }
 
     @classmethod

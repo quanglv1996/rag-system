@@ -1,0 +1,119 @@
+{
+  "id": "facebook_rag_reply",
+  "name": "Facebook Message → RAG → AI → Review → Reply",
+  "description": "Receive a Facebook message, answer using RAG, review, then reply via Messenger",
+  "version": "1.0.0",
+  "context": {
+    "collection": "default"
+  },
+  "nodes": [
+    {
+      "id": "extract_question",
+      "type": "transform",
+      "name": "Extract Question from FB Message",
+      "config": {
+        "input_key": "facebook_message",
+        "output_key": "question",
+        "expression": "value.get('message', value) if isinstance(value, dict) else str(value)"
+      },
+      "on_success": "rag_query"
+    },
+    {
+      "id": "rag_query",
+      "type": "rag",
+      "name": "Query RAG Knowledge Base",
+      "config": {
+        "question_key": "question",
+        "output_key": "rag_answer",
+        "collection": "default",
+        "top_k": 5,
+        "temperature": 0.3
+      },
+      "retry": {
+        "max_attempts": 2,
+        "delay_seconds": 1.0
+      },
+      "on_success": "enhance_with_ai",
+      "on_failure": "fallback_ai"
+    },
+    {
+      "id": "enhance_with_ai",
+      "type": "ai",
+      "name": "Polish Answer with AI",
+      "config": {
+        "prompt_template": "Based on this information: {{ rag_answer }}\n\nWrite a friendly, concise reply to: {{ question }}",
+        "output_key": "final_reply",
+        "temperature": 0.5,
+        "max_tokens": 512
+      },
+      "on_success": "review_approval",
+      "on_failure": "use_rag_directly"
+    },
+    {
+      "id": "use_rag_directly",
+      "type": "transform",
+      "name": "Fallback: Use RAG Answer Directly",
+      "config": {
+        "input_key": "rag_answer",
+        "output_key": "final_reply",
+        "expression": "value"
+      },
+      "on_success": "review_approval"
+    },
+    {
+      "id": "fallback_ai",
+      "type": "ai",
+      "name": "Fallback: Direct AI Answer",
+      "config": {
+        "prompt_key": "question",
+        "output_key": "final_reply",
+        "temperature": 0.7
+      },
+      "on_success": "review_approval"
+    },
+    {
+      "id": "review_approval",
+      "type": "condition",
+      "name": "Auto-Approve Short Replies",
+      "config": {
+        "expression": "len(final_reply) < 500",
+        "true_branch": "send_reply",
+        "false_branch": "human_review"
+      }
+    },
+    {
+      "id": "human_review",
+      "type": "approval",
+      "name": "Human Review Required",
+      "config": {
+        "approval_message": "Long reply needs human review before sending",
+        "approvers": ["admin@example.com"],
+        "approved_branch": "send_reply",
+        "rejected_branch": "shorten_reply"
+      }
+    },
+    {
+      "id": "shorten_reply",
+      "type": "ai",
+      "name": "Shorten Rejected Reply",
+      "config": {
+        "prompt_template": "Shorten this reply to under 200 characters: {{ final_reply }}",
+        "output_key": "final_reply",
+        "max_tokens": 256
+      },
+      "on_success": "send_reply"
+    },
+    {
+      "id": "send_reply",
+      "type": "social",
+      "name": "Send Messenger Reply",
+      "config": {
+        "platform": "facebook",
+        "action": "message",
+        "content_key": "final_reply",
+        "recipient_key": "sender_id",
+        "output_key": "messenger_result"
+      }
+    }
+  ]
+}

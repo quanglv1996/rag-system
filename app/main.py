@@ -11,11 +11,13 @@ Configures and creates the FastAPI application with:
 
 from contextlib import asynccontextmanager
 from collections.abc import AsyncGenerator
+from pathlib import Path
 from typing import Any
 
 from fastapi import FastAPI, Request
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from fastapi.staticfiles import StaticFiles
 
 from app.api.v1 import api_router
 from app.core.config import get_settings
@@ -121,13 +123,14 @@ def create_app() -> FastAPI:
     # Middleware (applied in reverse order — last added = outermost)
     # ==========================================================================
 
-    # CORS — must be before custom middleware
+    # CORS — allows the frontend at any origin in dev; restrict in production
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=settings.allowed_hosts,
+        allow_origins=settings.allowed_hosts if settings.is_production else ["*"],
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["X-Request-ID"],
     )
 
     # Rate limiting
@@ -141,6 +144,11 @@ def create_app() -> FastAPI:
     # ==========================================================================
 
     app.include_router(api_router, prefix=settings.api_v1_prefix)
+
+    # Serve the frontend monitor at /monitor
+    _frontend_dir = Path(__file__).parent.parent / "frontend"
+    if _frontend_dir.exists():
+        app.mount("/monitor", StaticFiles(directory=str(_frontend_dir), html=True), name="frontend")
 
     # ==========================================================================
     # Built-in endpoints
@@ -195,11 +203,12 @@ def create_app() -> FastAPI:
 
     @app.get("/", include_in_schema=False)
     async def root() -> dict[str, str]:
-        """Root endpoint redirects to docs."""
+        """Root endpoint shows app info and link to frontend."""
         return {
             "name": settings.app_name,
             "version": settings.app_version,
             "docs": "/docs",
+            "monitor": "/monitor",
         }
 
     return app

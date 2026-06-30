@@ -1,0 +1,8 @@
+{
+  "name": "anthropic",
+  "version": "1.0.0",
+  "plugin_type": "ai",
+  "entry_class": "app.providers.ai.anthropic_provider.AnthropicProvider",
+  "description": "Anthropic Claude AI provider plugin",
+  "requires": ["anthropic>=0.25.0"]
+}

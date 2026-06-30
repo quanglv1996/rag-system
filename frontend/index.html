@@ -1,0 +1,2779 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>AI Platform — Monitor & Test Console</title>
+  <style>
+    /* =========================================================
+       RESET & VARIABLES
+    ========================================================= */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg-0: #0d1117;
+      --bg-1: #161b22;
+      --bg-2: #21262d;
+      --bg-3: #30363d;
+      --border: #30363d;
+      --text-primary: #e6edf3;
+      --text-secondary: #8b949e;
+      --text-muted: #484f58;
+      --green: #3fb950;
+      --green-dim: #1e3a22;
+      --yellow: #d29922;
+      --yellow-dim: #3b2d0d;
+      --red: #f85149;
+      --red-dim: #3b0d0d;
+      --blue: #58a6ff;
+      --blue-dim: #0d2038;
+      --purple: #bc8cff;
+      --purple-dim: #1e1038;
+      --cyan: #39d4c8;
+      --orange: #e3b341;
+      --accent: #58a6ff;
+      --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', monospace;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+      background: var(--bg-0);
+      color: var(--text-primary);
+      font-size: 13px;
+      line-height: 1.5;
+      min-height: 100vh;
+      overflow-x: hidden;
+    }
+
+    /* =========================================================
+       SCROLLBAR
+    ========================================================= */
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: var(--bg-1); }
+    ::-webkit-scrollbar-thumb { background: var(--bg-3); border-radius: 3px; }
+    ::-webkit-scrollbar-thumb:hover { background: var(--text-muted); }
+
+    /* =========================================================
+       LAYOUT
+    ========================================================= */
+    #app {
+      display: grid;
+      grid-template-rows: 52px 1fr;
+      grid-template-columns: 240px 1fr;
+      height: 100vh;
+    }
+
+    /* =========================================================
+       TOPBAR
+    ========================================================= */
+    #topbar {
+      grid-column: 1 / -1;
+      grid-row: 1;
+      background: var(--bg-1);
+      border-bottom: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      padding: 0 16px;
+      gap: 12px;
+      z-index: 100;
+    }
+
+    #topbar .logo {
+      font-weight: 700;
+      font-size: 15px;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    #topbar .logo-icon {
+      width: 28px;
+      height: 28px;
+      background: linear-gradient(135deg, #58a6ff, #bc8cff);
+      border-radius: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 14px;
+    }
+
+    #system-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 3px 10px;
+      border-radius: 20px;
+      font-size: 11px;
+      font-weight: 600;
+      border: 1px solid var(--border);
+      transition: all 0.3s;
+    }
+    #system-badge.healthy { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+    #system-badge.degraded { background: var(--yellow-dim); border-color: var(--yellow); color: var(--yellow); }
+    #system-badge.down { background: var(--red-dim); border-color: var(--red); color: var(--red); }
+    #system-badge.unknown { background: var(--bg-2); border-color: var(--border); color: var(--text-secondary); }
+
+    .topbar-sep { flex: 1; }
+
+    .config-group {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .config-group label {
+      color: var(--text-secondary);
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    .config-group input {
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 4px 8px;
+      border-radius: 6px;
+      font-size: 12px;
+      width: 200px;
+      font-family: var(--font-mono);
+    }
+
+    .config-group input:focus {
+      outline: none;
+      border-color: var(--blue);
+    }
+
+    #refresh-countdown {
+      color: var(--text-muted);
+      font-size: 11px;
+      font-family: var(--font-mono);
+      min-width: 50px;
+      text-align: right;
+    }
+
+    .btn {
+      padding: 5px 12px;
+      border-radius: 6px;
+      border: 1px solid var(--border);
+      background: var(--bg-2);
+      color: var(--text-primary);
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: 500;
+      transition: all 0.15s;
+      display: flex;
+      align-items: center;
+      gap: 5px;
+      white-space: nowrap;
+    }
+    .btn:hover { background: var(--bg-3); border-color: var(--text-muted); }
+    .btn.primary { background: var(--blue); border-color: var(--blue); color: #fff; }
+    .btn.primary:hover { background: #4a9ee8; }
+    .btn.danger { background: var(--red-dim); border-color: var(--red); color: var(--red); }
+    .btn.success { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    .btn.spinning .btn-icon { animation: spin 1s linear infinite; }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* =========================================================
+       SIDEBAR
+    ========================================================= */
+    #sidebar {
+      grid-row: 2;
+      grid-column: 1;
+      background: var(--bg-1);
+      border-right: 1px solid var(--border);
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .sidebar-section {
+      padding: 10px 0;
+    }
+
+    .sidebar-section-title {
+      padding: 4px 16px;
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-muted);
+    }
+
+    .sidebar-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 6px 16px;
+      cursor: pointer;
+      border-radius: 0;
+      transition: background 0.1s;
+      border-left: 2px solid transparent;
+    }
+
+    .sidebar-item:hover { background: var(--bg-2); }
+
+    .sidebar-item.active {
+      background: var(--bg-2);
+      border-left-color: var(--blue);
+      color: var(--blue);
+    }
+
+    .sidebar-item.active .item-label { color: var(--blue); }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      position: relative;
+    }
+    .status-dot.healthy { background: var(--green); box-shadow: 0 0 5px var(--green); }
+    .status-dot.degraded { background: var(--yellow); }
+    .status-dot.error { background: var(--red); }
+    .status-dot.unknown { background: var(--bg-3); border: 1px solid var(--text-muted); }
+    .status-dot.checking { background: var(--blue); animation: pulse 1s infinite; }
+    @keyframes pulse { 0%,100% { opacity:1; } 50% { opacity:0.3; } }
+
+    .item-label {
+      flex: 1;
+      color: var(--text-secondary);
+      font-size: 12px;
+    }
+
+    .item-badge {
+      font-size: 10px;
+      padding: 1px 6px;
+      border-radius: 8px;
+      background: var(--bg-3);
+      color: var(--text-muted);
+    }
+
+    /* =========================================================
+       MAIN CONTENT
+    ========================================================= */
+    #main {
+      grid-row: 2;
+      grid-column: 2;
+      overflow-y: auto;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .page { display: none; padding: 20px; flex: 1; }
+    .page.active { display: block; }
+
+    /* =========================================================
+       DASHBOARD
+    ========================================================= */
+    .page-title {
+      font-size: 18px;
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+    .page-subtitle {
+      color: var(--text-secondary);
+      font-size: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stats-row {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .stat-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+    }
+
+    .stat-label {
+      font-size: 11px;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      margin-bottom: 6px;
+    }
+
+    .stat-value {
+      font-size: 28px;
+      font-weight: 700;
+      font-family: var(--font-mono);
+    }
+
+    .stat-value.green { color: var(--green); }
+    .stat-value.red { color: var(--red); }
+    .stat-value.yellow { color: var(--yellow); }
+    .stat-value.blue { color: var(--blue); }
+
+    .module-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+      gap: 12px;
+      margin-bottom: 20px;
+    }
+
+    .module-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 16px;
+      cursor: pointer;
+      transition: all 0.2s;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .module-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0;
+      width: 3px;
+      height: 100%;
+      background: var(--bg-3);
+      transition: background 0.3s;
+    }
+
+    .module-card.healthy::before { background: var(--green); }
+    .module-card.error::before { background: var(--red); }
+    .module-card.degraded::before { background: var(--yellow); }
+    .module-card.unknown::before { background: var(--text-muted); }
+    .module-card.checking::before { background: var(--blue); animation: pulse 1s infinite; }
+
+    .module-card:hover {
+      border-color: var(--text-muted);
+      transform: translateY(-1px);
+      box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .card-title {
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .card-icon {
+      font-size: 18px;
+    }
+
+    .card-status {
+      font-size: 11px;
+      padding: 2px 8px;
+      border-radius: 20px;
+      font-weight: 600;
+    }
+
+    .card-status.healthy { background: var(--green-dim); color: var(--green); }
+    .card-status.error { background: var(--red-dim); color: var(--red); }
+    .card-status.degraded { background: var(--yellow-dim); color: var(--yellow); }
+    .card-status.unknown { background: var(--bg-3); color: var(--text-muted); }
+    .card-status.checking { background: var(--blue-dim); color: var(--blue); }
+
+    .card-desc {
+      font-size: 11px;
+      color: var(--text-secondary);
+      margin-bottom: 10px;
+    }
+
+    .card-meta {
+      display: flex;
+      gap: 10px;
+      flex-wrap: wrap;
+    }
+
+    .endpoint-tag {
+      font-size: 10px;
+      font-family: var(--font-mono);
+      background: var(--bg-2);
+      padding: 2px 6px;
+      border-radius: 4px;
+      color: var(--text-muted);
+    }
+
+    .card-latency {
+      font-size: 10px;
+      color: var(--text-muted);
+      font-family: var(--font-mono);
+      margin-top: 8px;
+    }
+
+    /* =========================================================
+       LOG PANEL
+    ========================================================= */
+    #log-panel {
+      background: var(--bg-1);
+      border-top: 1px solid var(--border);
+      display: flex;
+      flex-direction: column;
+      height: 220px;
+      flex-shrink: 0;
+    }
+
+    .log-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 6px 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .log-title {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .log-controls { margin-left: auto; display: flex; gap: 6px; }
+
+    #log-entries {
+      flex: 1;
+      overflow-y: auto;
+      padding: 6px;
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .log-entry {
+      display: grid;
+      grid-template-columns: 80px 50px 200px 1fr;
+      gap: 10px;
+      padding: 3px 6px;
+      border-radius: 4px;
+      align-items: center;
+    }
+
+    .log-entry:hover { background: var(--bg-2); }
+
+    .log-time { color: var(--text-muted); }
+
+    .log-method {
+      font-weight: 700;
+      font-size: 10px;
+      text-align: center;
+      padding: 1px 4px;
+      border-radius: 3px;
+    }
+    .log-method.GET { background: var(--blue-dim); color: var(--blue); }
+    .log-method.POST { background: var(--green-dim); color: var(--green); }
+    .log-method.DELETE { background: var(--red-dim); color: var(--red); }
+    .log-method.PUT { background: var(--purple-dim); color: var(--purple); }
+
+    .log-path { color: var(--text-secondary); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    .log-status {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+
+    .status-code {
+      font-weight: 700;
+      font-size: 11px;
+    }
+    .status-code.ok { color: var(--green); }
+    .status-code.error { color: var(--red); }
+    .status-code.warn { color: var(--yellow); }
+
+    .log-ms { color: var(--text-muted); }
+
+    /* =========================================================
+       MODULE TEST PAGE
+    ========================================================= */
+    .module-page-header {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 20px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .module-page-icon {
+      width: 44px;
+      height: 44px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      background: var(--bg-2);
+      border: 1px solid var(--border);
+    }
+
+    .module-page-title { font-size: 18px; font-weight: 700; }
+    .module-page-subtitle { font-size: 12px; color: var(--text-secondary); margin-top: 2px; }
+
+    .module-page-status {
+      margin-left: auto;
+      display: flex;
+      flex-direction: column;
+      align-items: flex-end;
+      gap: 4px;
+    }
+
+    .endpoint-list {
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .endpoint-card {
+      background: var(--bg-1);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      overflow: hidden;
+    }
+
+    .endpoint-header {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      padding: 12px 16px;
+      cursor: pointer;
+      transition: background 0.15s;
+      border-bottom: 1px solid transparent;
+    }
+
+    .endpoint-header:hover { background: var(--bg-2); }
+    .endpoint-header.open { border-bottom-color: var(--border); background: var(--bg-2); }
+
+    .http-badge {
+      font-family: var(--font-mono);
+      font-size: 10px;
+      font-weight: 700;
+      padding: 2px 6px;
+      border-radius: 4px;
+      min-width: 42px;
+      text-align: center;
+    }
+    .http-badge.GET { background: var(--blue-dim); color: var(--blue); border: 1px solid var(--blue); }
+    .http-badge.POST { background: var(--green-dim); color: var(--green); border: 1px solid var(--green); }
+    .http-badge.DELETE { background: var(--red-dim); color: var(--red); border: 1px solid var(--red); }
+    .http-badge.PUT { background: var(--purple-dim); color: var(--purple); border: 1px solid var(--purple); }
+    .http-badge.PATCH { background: var(--yellow-dim); color: var(--yellow); border: 1px solid var(--yellow); }
+
+    .endpoint-path {
+      font-family: var(--font-mono);
+      font-size: 12px;
+      color: var(--text-primary);
+      flex: 1;
+    }
+
+    .endpoint-desc {
+      font-size: 11px;
+      color: var(--text-secondary);
+    }
+
+    .endpoint-run-status {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--bg-3);
+      border: 1px solid var(--text-muted);
+    }
+    .endpoint-run-status.ok { background: var(--green); border-color: var(--green); }
+    .endpoint-run-status.error { background: var(--red); border-color: var(--red); }
+
+    .endpoint-body {
+      display: none;
+      padding: 16px;
+      gap: 16px;
+      flex-direction: column;
+    }
+
+    .endpoint-body.open { display: flex; }
+
+    .form-group {
+      display: flex;
+      flex-direction: column;
+      gap: 5px;
+    }
+
+    .form-label {
+      font-size: 11px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.4px;
+    }
+
+    .form-label .required {
+      color: var(--red);
+      margin-left: 3px;
+    }
+
+    .form-control {
+      background: var(--bg-0);
+      border: 1px solid var(--border);
+      color: var(--text-primary);
+      padding: 8px 10px;
+      border-radius: 6px;
+      font-size: 12px;
+      font-family: var(--font-mono);
+      transition: border-color 0.15s;
+      width: 100%;
+    }
+
+    .form-control:focus {
+      outline: none;
+      border-color: var(--blue);
+      box-shadow: 0 0 0 2px rgba(88,166,255,0.15);
+    }
+
+    textarea.form-control {
+      resize: vertical;
+      min-height: 80px;
+    }
+
+    select.form-control { cursor: pointer; }
+
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .form-actions {
+      display: flex;
+      gap: 8px;
+      align-items: center;
+    }
+
+    /* Response viewer */
+    .response-panel {
+      margin-top: 12px;
+      background: var(--bg-0);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      overflow: hidden;
+    }
+
+    .response-header {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 8px 12px;
+      background: var(--bg-1);
+      border-bottom: 1px solid var(--border);
+      font-size: 11px;
+    }
+
+    .response-header .status-code { font-size: 13px; font-weight: 700; }
+
+    .response-tabs {
+      display: flex;
+      gap: 0;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .rtab {
+      padding: 6px 14px;
+      font-size: 11px;
+      cursor: pointer;
+      color: var(--text-secondary);
+      border-bottom: 2px solid transparent;
+      transition: all 0.15s;
+    }
+
+    .rtab:hover { color: var(--text-primary); background: var(--bg-2); }
+    .rtab.active { color: var(--blue); border-bottom-color: var(--blue); }
+
+    .response-body {
+      padding: 12px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      max-height: 350px;
+      overflow: auto;
+      white-space: pre-wrap;
+      word-break: break-all;
+      display: none;
+    }
+
+    .response-body.active { display: block; }
+
+    /* JSON syntax highlight */
+    .json-key { color: var(--blue); }
+    .json-str { color: var(--green); }
+    .json-num { color: var(--orange); }
+    .json-bool { color: var(--purple); }
+    .json-null { color: var(--text-muted); }
+
+    /* =========================================================
+       SECTIONS
+    ========================================================= */
+    section { margin-bottom: 24px; }
+
+    .section-title {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-secondary);
+      margin-bottom: 12px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .section-title::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border);
+    }
+
+    /* =========================================================
+       ALERTS
+    ========================================================= */
+    .alert {
+      padding: 10px 14px;
+      border-radius: 8px;
+      font-size: 12px;
+      margin-bottom: 12px;
+      border: 1px solid;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .alert.info { background: var(--blue-dim); border-color: var(--blue); color: var(--blue); }
+    .alert.warn { background: var(--yellow-dim); border-color: var(--yellow); color: var(--yellow); }
+    .alert.error { background: var(--red-dim); border-color: var(--red); color: var(--red); }
+    .alert.success { background: var(--green-dim); border-color: var(--green); color: var(--green); }
+
+    /* =========================================================
+       STREAMING OUTPUT
+    ========================================================= */
+    .stream-output {
+      background: var(--bg-0);
+      border: 1px solid var(--border);
+      border-radius: 6px;
+      padding: 10px;
+      font-family: var(--font-mono);
+      font-size: 12px;
+      min-height: 60px;
+      max-height: 200px;
+      overflow-y: auto;
+      color: var(--green);
+      white-space: pre-wrap;
+    }
+
+    /* =========================================================
+       HEALTH DETAIL TABLE
+    ========================================================= */
+    .health-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    .health-table th {
+      text-align: left;
+      padding: 8px 12px;
+      font-size: 10px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+      color: var(--text-muted);
+      border-bottom: 1px solid var(--border);
+    }
+
+    .health-table td {
+      padding: 8px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-secondary);
+    }
+
+    .health-table tr:hover td { background: var(--bg-2); }
+
+    .health-table .mono { font-family: var(--font-mono); }
+
+    /* =========================================================
+       TOOLTIP
+    ========================================================= */
+    [data-tip] { position: relative; }
+    [data-tip]:hover::after {
+      content: attr(data-tip);
+      position: absolute;
+      bottom: calc(100% + 5px);
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-3);
+      color: var(--text-primary);
+      padding: 4px 8px;
+      border-radius: 4px;
+      font-size: 11px;
+      white-space: nowrap;
+      pointer-events: none;
+      z-index: 999;
+      border: 1px solid var(--border);
+    }
+
+    /* =========================================================
+       PROGRESS BAR
+    ========================================================= */
+    .progress-bar {
+      height: 4px;
+      background: var(--bg-3);
+      border-radius: 2px;
+      overflow: hidden;
+      margin-top: 4px;
+    }
+
+    .progress-fill {
+      height: 100%;
+      border-radius: 2px;
+      transition: width 0.3s;
+    }
+    .progress-fill.green { background: var(--green); }
+    .progress-fill.red { background: var(--red); }
+    .progress-fill.yellow { background: var(--yellow); }
+
+    /* =========================================================
+       RESPONSIVE
+    ========================================================= */
+    @media (max-width: 900px) {
+      #app { grid-template-columns: 1fr; grid-template-rows: 52px 48px 1fr; }
+      #sidebar { grid-row: 2; grid-column: 1; flex-direction: row; overflow-x: auto; height: 48px; border-right: none; border-bottom: 1px solid var(--border); }
+      #main { grid-row: 3; grid-column: 1; }
+      .stats-row { grid-template-columns: repeat(2, 1fr); }
+    }
+  </style>
+</head>
+<body>
+<div id="app">
+
+  <!-- ===================== TOPBAR ===================== -->
+  <header id="topbar">
+    <div class="logo">
+      <div class="logo-icon">🤖</div>
+      AI Platform
+    </div>
+
+    <div id="system-badge" class="unknown">
+      <div class="status-dot unknown" id="system-dot"></div>
+      <span id="system-text">Checking…</span>
+    </div>
+
+    <div class="topbar-sep"></div>
+
+    <div class="config-group">
+      <label>Base URL</label>
+      <input type="text" id="base-url" value="http://localhost:8000" placeholder="http://localhost:8000" />
+    </div>
+
+    <div class="config-group">
+      <label>Bearer Token</label>
+      <input type="text" id="auth-token" placeholder="Optional JWT token" />
+    </div>
+
+    <button class="btn primary" onclick="runAllHealthChecks()" id="refresh-btn">
+      <span class="btn-icon">↻</span> Refresh
+    </button>
+
+    <span id="refresh-countdown" data-tip="Next auto-refresh">--s</span>
+  </header>
+
+  <!-- ===================== SIDEBAR ===================== -->
+  <nav id="sidebar">
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Overview</div>
+      <div class="sidebar-item active" onclick="showPage('dashboard')" id="nav-dashboard">
+        <div class="status-dot healthy"></div>
+        <span class="item-label">Dashboard</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">System</div>
+      <div class="sidebar-item" onclick="showPage('health')" id="nav-health">
+        <div class="status-dot unknown" id="dot-health"></div>
+        <span class="item-label">Health Check</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">AI Modules</div>
+      <div class="sidebar-item" onclick="showPage('ai')" id="nav-ai">
+        <div class="status-dot unknown" id="dot-ai"></div>
+        <span class="item-label">AI Provider</span>
+        <span class="item-badge">M26</span>
+      </div>
+      <div class="sidebar-item" onclick="showPage('rag')" id="nav-rag">
+        <div class="status-dot unknown" id="dot-rag"></div>
+        <span class="item-label">RAG Pipeline</span>
+        <span class="item-badge">M27</span>
+      </div>
+      <div class="sidebar-item" onclick="showPage('agent')" id="nav-agent">
+        <div class="status-dot unknown" id="dot-agent"></div>
+        <span class="item-label">AI Agent</span>
+        <span class="item-badge">M24</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Social</div>
+      <div class="sidebar-item" onclick="showPage('facebook')" id="nav-facebook">
+        <div class="status-dot unknown" id="dot-facebook"></div>
+        <span class="item-label">Facebook</span>
+        <span class="item-badge">M3</span>
+      </div>
+      <div class="sidebar-item" onclick="showPage('telegram')" id="nav-telegram">
+        <div class="status-dot unknown" id="dot-telegram"></div>
+        <span class="item-label">Telegram</span>
+        <span class="item-badge">M6</span>
+      </div>
+      <div class="sidebar-item" onclick="showPage('youtube')" id="nav-youtube">
+        <div class="status-dot unknown" id="dot-youtube"></div>
+        <span class="item-label">YouTube</span>
+        <span class="item-badge">M5</span>
+      </div>
+      <div class="sidebar-item" onclick="showPage('tiktok')" id="nav-tiktok">
+        <div class="status-dot unknown" id="dot-tiktok"></div>
+        <span class="item-label">TikTok</span>
+        <span class="item-badge">M4</span>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <div class="sidebar-section-title">Automation</div>
+      <div class="sidebar-item" onclick="showPage('workflow')" id="nav-workflow">
+        <div class="status-dot unknown" id="dot-workflow"></div>
+        <span class="item-label">Workflow Engine</span>
+        <span class="item-badge">M17</span>
+      </div>
+      <div class="sidebar-item" onclick="showPage('oauth')" id="nav-oauth">
+        <div class="status-dot unknown" id="dot-oauth"></div>
+        <span class="item-label">OAuth Manager</span>
+        <span class="item-badge">M21</span>
+      </div>
+      <div class="sidebar-item" onclick="showPage('webhook')" id="nav-webhook">
+        <div class="status-dot unknown" id="dot-webhook"></div>
+        <span class="item-label">Webhook Gateway</span>
+        <span class="item-badge">M23</span>
+      </div>
+    </div>
+  </nav>
+
+  <!-- ===================== MAIN ===================== -->
+  <main id="main">
+
+    <!-- ============ DASHBOARD PAGE ============ -->
+    <div class="page active" id="page-dashboard">
+      <div class="page-title">System Dashboard</div>
+      <div class="page-subtitle" id="dash-subtitle">Real-time monitoring of all modules</div>
+
+      <div class="stats-row">
+        <div class="stat-card">
+          <div class="stat-label">Healthy Modules</div>
+          <div class="stat-value green" id="stat-healthy">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Degraded</div>
+          <div class="stat-value yellow" id="stat-degraded">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">Offline</div>
+          <div class="stat-value red" id="stat-error">—</div>
+        </div>
+        <div class="stat-card">
+          <div class="stat-label">API Calls Today</div>
+          <div class="stat-value blue" id="stat-calls">0</div>
+        </div>
+      </div>
+
+      <section class="section-title">Modules</section>
+      <div class="module-grid" id="module-grid">
+        <!-- filled by JS -->
+      </div>
+
+      <section class="section-title">Backend Services</section>
+      <table class="health-table">
+        <thead>
+          <tr>
+            <th>Service</th>
+            <th>Status</th>
+            <th>Latency</th>
+            <th>Details</th>
+          </tr>
+        </thead>
+        <tbody id="services-table"></tbody>
+      </table>
+    </div>
+
+    <!-- ============ HEALTH PAGE ============ -->
+    <div class="page" id="page-health">
+      <div class="module-page-header">
+        <div class="module-page-icon">💚</div>
+        <div>
+          <div class="module-page-title">Health Check</div>
+          <div class="module-page-subtitle">GET /health — System-wide health endpoint</div>
+        </div>
+        <div class="module-page-status">
+          <div class="card-status unknown" id="health-badge">Unknown</div>
+        </div>
+      </div>
+
+      <div class="endpoint-list">
+        <div class="endpoint-card">
+          <div class="endpoint-header open">
+            <span class="http-badge GET">GET</span>
+            <span class="endpoint-path">/health</span>
+            <span class="endpoint-desc">Full system health check</span>
+            <div class="endpoint-run-status" id="erun-health"></div>
+          </div>
+          <div class="endpoint-body open">
+            <div class="form-actions">
+              <button class="btn primary" onclick="callHealth()">▶ Run</button>
+              <span style="color:var(--text-muted);font-size:11px">No parameters required</span>
+            </div>
+            <div class="response-panel" id="resp-health" style="display:none"></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============ AI PAGE ============ -->
+    <div class="page" id="page-ai">
+      <div class="module-page-header">
+        <div class="module-page-icon">🧠</div>
+        <div>
+          <div class="module-page-title">AI Provider</div>
+          <div class="module-page-subtitle">Chat · Embedding · Image · Vision · Speech</div>
+        </div>
+        <div class="module-page-status">
+          <div class="card-status unknown" id="ai-badge">Unknown</div>
+        </div>
+      </div>
+
+      <div class="endpoint-list" id="ai-endpoints">
+
+        <!-- Capabilities -->
+        <div class="endpoint-card" id="ep-capabilities">
+          <div class="endpoint-header" onclick="toggleEndpoint('capabilities')">
+            <span class="http-badge GET">GET</span>
+            <span class="endpoint-path">/api/v1/ai/capabilities</span>
+            <span class="endpoint-desc">Get provider capabilities</span>
+            <div class="endpoint-run-status" id="erun-capabilities"></div>
+          </div>
+          <div class="endpoint-body" id="body-capabilities">
+            <div class="form-actions">
+              <button class="btn primary" onclick="callCapabilities()">▶ Run</button>
+            </div>
+            <div class="response-panel" id="resp-capabilities" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Chat -->
+        <div class="endpoint-card" id="ep-chat">
+          <div class="endpoint-header" onclick="toggleEndpoint('chat')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/ai/chat</span>
+            <span class="endpoint-desc">Chat completion</span>
+            <div class="endpoint-run-status" id="erun-chat"></div>
+          </div>
+          <div class="endpoint-body" id="body-chat">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Model <span style="color:var(--text-muted)">(optional)</span></label>
+                <input class="form-control" id="chat-model" placeholder="gpt-4o" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Temperature</label>
+                <input class="form-control" id="chat-temp" type="number" value="0.7" min="0" max="2" step="0.1" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">System Prompt</label>
+              <textarea class="form-control" id="chat-system" rows="2" placeholder="You are a helpful assistant."></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">User Message <span class="required">*</span></label>
+              <textarea class="form-control" id="chat-message" rows="3" placeholder="Hello! What can you do?">Hello! What can you do?</textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callChat()">▶ Send</button>
+              <button class="btn" onclick="callChatStream()">⚡ Stream</button>
+            </div>
+            <div class="stream-output" id="stream-output" style="display:none"></div>
+            <div class="response-panel" id="resp-chat" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Embedding -->
+        <div class="endpoint-card" id="ep-embedding">
+          <div class="endpoint-header" onclick="toggleEndpoint('embedding')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/ai/embedding</span>
+            <span class="endpoint-desc">Generate text embeddings</span>
+            <div class="endpoint-run-status" id="erun-embedding"></div>
+          </div>
+          <div class="endpoint-body" id="body-embedding">
+            <div class="form-group">
+              <label class="form-label">Texts (one per line) <span class="required">*</span></label>
+              <textarea class="form-control" id="embed-texts" rows="4" placeholder="Hello world&#10;AI is amazing&#10;Embeddings are useful">Hello world
+AI is amazing</textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callEmbedding()">▶ Generate</button>
+            </div>
+            <div class="response-panel" id="resp-embedding" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Image -->
+        <div class="endpoint-card" id="ep-image">
+          <div class="endpoint-header" onclick="toggleEndpoint('image')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/ai/image</span>
+            <span class="endpoint-desc">Generate images (DALL-E)</span>
+            <div class="endpoint-run-status" id="erun-image"></div>
+          </div>
+          <div class="endpoint-body" id="body-image">
+            <div class="form-group">
+              <label class="form-label">Prompt <span class="required">*</span></label>
+              <textarea class="form-control" id="img-prompt" rows="3" placeholder="A futuristic cityscape at sunset, digital art">A futuristic cityscape at sunset, digital art</textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Size</label>
+                <select class="form-control" id="img-size">
+                  <option value="1024x1024">1024×1024</option>
+                  <option value="1792x1024">1792×1024 (wide)</option>
+                  <option value="1024x1792">1024×1792 (tall)</option>
+                </select>
+              </div>
+              <div class="form-group">
+                <label class="form-label">Quality</label>
+                <select class="form-control" id="img-quality">
+                  <option value="standard">Standard</option>
+                  <option value="hd">HD</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callImage()">▶ Generate</button>
+            </div>
+            <div id="img-preview" style="display:none; margin-top:10px">
+              <img id="img-result" style="max-width:300px; border-radius:8px; border:1px solid var(--border)" />
+            </div>
+            <div class="response-panel" id="resp-image" style="display:none"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============ RAG PAGE ============ -->
+    <div class="page" id="page-rag">
+      <div class="module-page-header">
+        <div class="module-page-icon">📚</div>
+        <div>
+          <div class="module-page-title">RAG Pipeline</div>
+          <div class="module-page-subtitle">Document Upload · Query · Hybrid Search</div>
+        </div>
+        <div class="module-page-status">
+          <div class="card-status unknown" id="rag-badge">Unknown</div>
+        </div>
+      </div>
+
+      <div class="endpoint-list">
+
+        <!-- Upload -->
+        <div class="endpoint-card" id="ep-rag-upload">
+          <div class="endpoint-header" onclick="toggleEndpoint('rag-upload')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/rag/upload</span>
+            <span class="endpoint-desc">Upload & index a document</span>
+            <div class="endpoint-run-status" id="erun-rag-upload"></div>
+          </div>
+          <div class="endpoint-body" id="body-rag-upload">
+            <div class="alert info">📄 Supported: PDF, DOCX, TXT, MD, HTML (max 50MB)</div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Document File <span class="required">*</span></label>
+                <input class="form-control" type="file" id="rag-file" accept=".pdf,.docx,.txt,.md,.html" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Collection</label>
+                <input class="form-control" id="rag-collection" placeholder="default" value="default" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Or use sample text content (paste below)</label>
+              <textarea class="form-control" id="rag-text-content" rows="4" placeholder="Paste document content here for quick test..."></textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callRAGUpload()">▶ Upload & Index</button>
+            </div>
+            <div class="response-panel" id="resp-rag-upload" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Query -->
+        <div class="endpoint-card" id="ep-rag-query">
+          <div class="endpoint-header" onclick="toggleEndpoint('rag-query')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/rag/query</span>
+            <span class="endpoint-desc">Question answering with retrieval</span>
+            <div class="endpoint-run-status" id="erun-rag-query"></div>
+          </div>
+          <div class="endpoint-body" id="body-rag-query">
+            <div class="form-group">
+              <label class="form-label">Question <span class="required">*</span></label>
+              <textarea class="form-control" id="rag-question" rows="3" placeholder="What is artificial intelligence?">What is artificial intelligence?</textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Collection</label>
+                <input class="form-control" id="rag-query-collection" placeholder="default" value="default" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Top K</label>
+                <input class="form-control" id="rag-topk" type="number" value="5" min="1" max="50" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">System Prompt</label>
+              <textarea class="form-control" id="rag-system" rows="2" placeholder="You are a helpful assistant. Answer based on context only."></textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callRAGQuery()">▶ Query</button>
+            </div>
+            <div class="response-panel" id="resp-rag-query" style="display:none"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============ FACEBOOK PAGE ============ -->
+    <div class="page" id="page-facebook">
+      <div class="module-page-header">
+        <div class="module-page-icon">📘</div>
+        <div>
+          <div class="module-page-title">Facebook Integration</div>
+          <div class="module-page-subtitle">Post · Message · Comment · Insights · Webhook</div>
+        </div>
+        <div class="module-page-status">
+          <div class="card-status unknown" id="facebook-badge">Unknown</div>
+        </div>
+      </div>
+
+      <div class="endpoint-list">
+
+        <!-- Page Info -->
+        <div class="endpoint-card" id="ep-fb-page">
+          <div class="endpoint-header" onclick="toggleEndpoint('fb-page')">
+            <span class="http-badge GET">GET</span>
+            <span class="endpoint-path">/api/v1/facebook/page</span>
+            <span class="endpoint-desc">Get page info (health check)</span>
+            <div class="endpoint-run-status" id="erun-fb-page"></div>
+          </div>
+          <div class="endpoint-body" id="body-fb-page">
+            <div class="alert warn">⚠️ Requires FACEBOOK_PAGE_TOKEN in .env</div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callFBPage()">▶ Get Page Info</button>
+            </div>
+            <div class="response-panel" id="resp-fb-page" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Post -->
+        <div class="endpoint-card" id="ep-fb-post">
+          <div class="endpoint-header" onclick="toggleEndpoint('fb-post')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/facebook/post</span>
+            <span class="endpoint-desc">Publish a post to the page</span>
+            <div class="endpoint-run-status" id="erun-fb-post"></div>
+          </div>
+          <div class="endpoint-body" id="body-fb-post">
+            <div class="form-group">
+              <label class="form-label">Post Content <span class="required">*</span></label>
+              <textarea class="form-control" id="fb-content" rows="4" placeholder="Hello from AI Platform! 🚀"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Link URL (optional)</label>
+              <input class="form-control" id="fb-link" placeholder="https://example.com" />
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callFBPost()">▶ Publish Post</button>
+            </div>
+            <div class="response-panel" id="resp-fb-post" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Message -->
+        <div class="endpoint-card" id="ep-fb-msg">
+          <div class="endpoint-header" onclick="toggleEndpoint('fb-msg')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/facebook/message</span>
+            <span class="endpoint-desc">Send Messenger message</span>
+            <div class="endpoint-run-status" id="erun-fb-msg"></div>
+          </div>
+          <div class="endpoint-body" id="body-fb-msg">
+            <div class="form-group">
+              <label class="form-label">Recipient PSID <span class="required">*</span></label>
+              <input class="form-control" id="fb-recipient" placeholder="1234567890" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Message Text <span class="required">*</span></label>
+              <textarea class="form-control" id="fb-msg-text" rows="3" placeholder="Hello from the AI Platform!"></textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callFBMessage()">▶ Send Message</button>
+            </div>
+            <div class="response-panel" id="resp-fb-msg" style="display:none"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============ TELEGRAM PAGE ============ -->
+    <div class="page" id="page-telegram">
+      <div class="module-page-header">
+        <div class="module-page-icon">✈️</div>
+        <div>
+          <div class="module-page-title">Telegram Bot</div>
+          <div class="module-page-subtitle">Send Message · Media · Inline Keyboard · Webhook</div>
+        </div>
+        <div class="module-page-status">
+          <div class="card-status unknown" id="telegram-badge">Unknown</div>
+        </div>
+      </div>
+
+      <div class="endpoint-list">
+
+        <!-- Bot Info -->
+        <div class="endpoint-card" id="ep-tg-info">
+          <div class="endpoint-header" onclick="toggleEndpoint('tg-info')">
+            <span class="http-badge GET">GET</span>
+            <span class="endpoint-path">/api/v1/telegram/bot/info</span>
+            <span class="endpoint-desc">Get bot info (health check)</span>
+            <div class="endpoint-run-status" id="erun-tg-info"></div>
+          </div>
+          <div class="endpoint-body" id="body-tg-info">
+            <div class="alert warn">⚠️ Requires TELEGRAM_BOT_TOKEN in .env</div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callTGInfo()">▶ Get Bot Info</button>
+            </div>
+            <div class="response-panel" id="resp-tg-info" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Send Message -->
+        <div class="endpoint-card" id="ep-tg-send">
+          <div class="endpoint-header" onclick="toggleEndpoint('tg-send')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/telegram/send</span>
+            <span class="endpoint-desc">Send a text message</span>
+            <div class="endpoint-run-status" id="erun-tg-send"></div>
+          </div>
+          <div class="endpoint-body" id="body-tg-send">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Chat ID <span class="required">*</span></label>
+                <input class="form-control" id="tg-chat-id" placeholder="-1001234567890" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Parse Mode</label>
+                <select class="form-control" id="tg-parse-mode">
+                  <option value="HTML">HTML</option>
+                  <option value="Markdown">Markdown</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Message Text <span class="required">*</span></label>
+              <textarea class="form-control" id="tg-text" rows="3" placeholder="Hello from &lt;b&gt;AI Platform&lt;/b&gt; 🚀">Hello from <b>AI Platform</b> 🚀</textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callTGSend()">▶ Send</button>
+            </div>
+            <div class="response-panel" id="resp-tg-send" style="display:none"></div>
+          </div>
+        </div>
+
+        <!-- Webhook -->
+        <div class="endpoint-card" id="ep-tg-webhook">
+          <div class="endpoint-header" onclick="toggleEndpoint('tg-webhook')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/telegram/webhook/set</span>
+            <span class="endpoint-desc">Set webhook URL</span>
+            <div class="endpoint-run-status" id="erun-tg-webhook"></div>
+          </div>
+          <div class="endpoint-body" id="body-tg-webhook">
+            <div class="form-group">
+              <label class="form-label">Webhook URL (HTTPS required) <span class="required">*</span></label>
+              <input class="form-control" id="tg-webhook-url" placeholder="https://yourdomain.com/api/v1/telegram/webhook" />
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callTGWebhook()">▶ Set Webhook</button>
+            </div>
+            <div class="response-panel" id="resp-tg-webhook" style="display:none"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============ YOUTUBE PAGE ============ -->
+    <div class="page" id="page-youtube">
+      <div class="module-page-header">
+        <div class="module-page-icon">▶️</div>
+        <div>
+          <div class="module-page-title">YouTube</div>
+          <div class="module-page-subtitle">Upload Video · Playlists · Comments · Analytics</div>
+        </div>
+        <div class="module-page-status">
+          <div class="card-status unknown" id="youtube-badge">Unknown</div>
+        </div>
+      </div>
+
+      <div class="alert warn">⚠️ Requires Google OAuth2 access token (Authorization header)</div>
+
+      <div class="form-group" style="margin-bottom:16px">
+        <label class="form-label">YouTube Access Token</label>
+        <input class="form-control" id="yt-token" placeholder="Bearer token from Google OAuth" />
+      </div>
+
+      <div class="endpoint-list">
+
+        <div class="endpoint-card" id="ep-yt-upload">
+          <div class="endpoint-header" onclick="toggleEndpoint('yt-upload')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/youtube/upload</span>
+            <span class="endpoint-desc">Upload a video</span>
+            <div class="endpoint-run-status" id="erun-yt-upload"></div>
+          </div>
+          <div class="endpoint-body" id="body-yt-upload">
+            <div class="form-group">
+              <label class="form-label">Video Title <span class="required">*</span></label>
+              <input class="form-control" id="yt-title" placeholder="My Amazing Video" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea class="form-control" id="yt-desc" rows="3" placeholder="Video description..."></textarea>
+            </div>
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Video URL (public)</label>
+                <input class="form-control" id="yt-video-url" placeholder="https://example.com/video.mp4" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Privacy</label>
+                <select class="form-control" id="yt-privacy">
+                  <option value="private">Private</option>
+                  <option value="unlisted">Unlisted</option>
+                  <option value="public">Public</option>
+                </select>
+              </div>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callYTUpload()">▶ Upload</button>
+            </div>
+            <div class="response-panel" id="resp-yt-upload" style="display:none"></div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-yt-playlist">
+          <div class="endpoint-header" onclick="toggleEndpoint('yt-playlist')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/youtube/playlists</span>
+            <span class="endpoint-desc">Create a playlist</span>
+            <div class="endpoint-run-status" id="erun-yt-playlist"></div>
+          </div>
+          <div class="endpoint-body" id="body-yt-playlist">
+            <div class="form-group">
+              <label class="form-label">Playlist Title <span class="required">*</span></label>
+              <input class="form-control" id="yt-pl-title" placeholder="My Playlist" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Description</label>
+              <textarea class="form-control" id="yt-pl-desc" rows="2" placeholder="Playlist description..."></textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callYTPlaylist()">▶ Create</button>
+            </div>
+            <div class="response-panel" id="resp-yt-playlist" style="display:none"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============ TIKTOK PAGE ============ -->
+    <div class="page" id="page-tiktok">
+      <div class="module-page-header">
+        <div class="module-page-icon">🎵</div>
+        <div>
+          <div class="module-page-title">TikTok</div>
+          <div class="module-page-subtitle">Publish Video · Creator Info · Analytics</div>
+        </div>
+        <div class="module-page-status">
+          <div class="card-status unknown" id="tiktok-badge">Unknown</div>
+        </div>
+      </div>
+
+      <div class="alert warn">⚠️ Requires TikTok OAuth2 access token</div>
+
+      <div class="form-group" style="margin-bottom:16px">
+        <label class="form-label">TikTok Access Token</label>
+        <input class="form-control" id="tt-token" placeholder="TikTok access token" />
+      </div>
+
+      <div class="endpoint-list">
+
+        <div class="endpoint-card" id="ep-tt-info">
+          <div class="endpoint-header" onclick="toggleEndpoint('tt-info')">
+            <span class="http-badge GET">GET</span>
+            <span class="endpoint-path">/api/v1/tiktok/creator/info</span>
+            <span class="endpoint-desc">Get creator info</span>
+            <div class="endpoint-run-status" id="erun-tt-info"></div>
+          </div>
+          <div class="endpoint-body" id="body-tt-info">
+            <div class="form-actions">
+              <button class="btn primary" onclick="callTTInfo()">▶ Get Info</button>
+            </div>
+            <div class="response-panel" id="resp-tt-info" style="display:none"></div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-tt-upload">
+          <div class="endpoint-header" onclick="toggleEndpoint('tt-upload')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/tiktok/upload</span>
+            <span class="endpoint-desc">Publish a video</span>
+            <div class="endpoint-run-status" id="erun-tt-upload"></div>
+          </div>
+          <div class="endpoint-body" id="body-tt-upload">
+            <div class="form-group">
+              <label class="form-label">Video URL (public) <span class="required">*</span></label>
+              <input class="form-control" id="tt-video-url" placeholder="https://example.com/video.mp4" />
+            </div>
+            <div class="form-group">
+              <label class="form-label">Title / Caption <span class="required">*</span></label>
+              <textarea class="form-control" id="tt-title" rows="2" placeholder="My awesome TikTok video! 🎵"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Privacy</label>
+              <select class="form-control" id="tt-privacy">
+                <option value="PUBLIC_TO_EVERYONE">Public</option>
+                <option value="MUTUAL_FOLLOW_FRIENDS">Friends only</option>
+                <option value="SELF_ONLY">Private</option>
+              </select>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callTTUpload()">▶ Publish</button>
+            </div>
+            <div class="response-panel" id="resp-tt-upload" style="display:none"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============ WORKFLOW PAGE ============ -->
+    <div class="page" id="page-workflow">
+      <div class="module-page-header">
+        <div class="module-page-icon">⚙️</div>
+        <div>
+          <div class="module-page-title">Workflow Engine</div>
+          <div class="module-page-subtitle">Define & Execute AI automation workflows (M17)</div>
+        </div>
+        <div class="module-page-status">
+          <div class="card-status unknown" id="workflow-badge">Unknown</div>
+        </div>
+      </div>
+
+      <div class="alert info">ℹ️ Workflow Engine runs via Celery. Ensure workers are running: <code style="font-family:var(--font-mono)">make dev</code></div>
+
+      <div class="endpoint-list">
+
+        <div class="endpoint-card" id="ep-wf-validate">
+          <div class="endpoint-header" onclick="toggleEndpoint('wf-validate')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/ai/chat</span>
+            <span class="endpoint-desc">Test via simple AI chat workflow</span>
+            <div class="endpoint-run-status" id="erun-wf-validate"></div>
+          </div>
+          <div class="endpoint-body" id="body-wf-validate">
+            <div class="form-group">
+              <label class="form-label">Workflow Definition (JSON) <span class="required">*</span></label>
+              <textarea class="form-control" id="wf-json" rows="20" style="font-size:11px"></textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Initial Context Variables (JSON)</label>
+              <textarea class="form-control" id="wf-context" rows="4" style="font-size:11px">{
+  "question": "What is artificial intelligence?",
+  "chat_id": "123456789"
+}</textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn" onclick="loadExampleWorkflow()">📋 Load Example</button>
+              <button class="btn primary" onclick="callWorkflow()">▶ Execute</button>
+            </div>
+            <div class="response-panel" id="resp-wf-validate" style="display:none"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============ AGENT PAGE ============ -->
+    <div class="page" id="page-agent">
+      <div class="module-page-header">
+        <div class="module-page-icon">🤖</div>
+        <div>
+          <div class="module-page-title">AI Agent</div>
+          <div class="module-page-subtitle">ReAct Agent with Tool Calling (M24-M25)</div>
+        </div>
+        <div class="module-page-status">
+          <div class="card-status unknown" id="agent-badge">Unknown</div>
+        </div>
+      </div>
+
+      <div class="alert info">ℹ️ Agent uses /ai/chat endpoint internally with tool-calling pattern.</div>
+
+      <div class="endpoint-list">
+
+        <div class="endpoint-card" id="ep-agent-run">
+          <div class="endpoint-header" onclick="toggleEndpoint('agent-run')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/ai/chat</span>
+            <span class="endpoint-desc">Simulate agent with tool instructions</span>
+            <div class="endpoint-run-status" id="erun-agent-run"></div>
+          </div>
+          <div class="endpoint-body" id="body-agent-run">
+            <div class="form-group">
+              <label class="form-label">Task / Query <span class="required">*</span></label>
+              <textarea class="form-control" id="agent-task" rows="3" placeholder="Search the knowledge base for information about machine learning and summarize it.">Search the knowledge base for machine learning information and summarize the key points.</textarea>
+            </div>
+            <div class="form-group">
+              <label class="form-label">System Prompt (Agent Persona)</label>
+              <textarea class="form-control" id="agent-system" rows="3">You are an intelligent AI agent. Use the available tools to complete the task. Think step by step.</textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callAgent()">▶ Run Agent</button>
+            </div>
+            <div class="response-panel" id="resp-agent-run" style="display:none"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ============ OAUTH PAGE ============ -->
+    <div class="page" id="page-oauth">
+      <div class="module-page-header">
+        <div class="module-page-icon">🔐</div>
+        <div>
+          <div class="module-page-title">OAuth Manager</div>
+          <div class="module-page-subtitle">Facebook · Google · TikTok OAuth2 flows (M21)</div>
+        </div>
+        <div class="module-page-status">
+          <div class="card-status unknown" id="oauth-badge">Unknown</div>
+        </div>
+      </div>
+
+      <div class="alert info">ℹ️ OAuth flows require proper redirect URIs and app credentials in .env</div>
+
+      <div class="module-grid">
+        <div class="module-card" onclick="openOAuthFlow('facebook')">
+          <div class="card-header">
+            <div class="card-title">📘 Facebook OAuth</div>
+          </div>
+          <div class="card-desc">Login with Facebook and get Page access token</div>
+          <div class="card-meta">
+            <span class="endpoint-tag">FACEBOOK_APP_ID required</span>
+          </div>
+        </div>
+        <div class="module-card" onclick="openOAuthFlow('google')">
+          <div class="card-header">
+            <div class="card-title">🔴 Google OAuth</div>
+          </div>
+          <div class="card-desc">Login with Google for YouTube access</div>
+          <div class="card-meta">
+            <span class="endpoint-tag">YOUTUBE_CLIENT_ID required</span>
+          </div>
+        </div>
+        <div class="module-card" onclick="openOAuthFlow('tiktok')">
+          <div class="card-header">
+            <div class="card-title">🎵 TikTok OAuth</div>
+          </div>
+          <div class="card-desc">Login with TikTok for video publishing</div>
+          <div class="card-meta">
+            <span class="endpoint-tag">TIKTOK_CLIENT_ID required</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="form-group" style="margin-bottom:16px">
+        <label class="form-label">Redirect URI (must match .env config)</label>
+        <input class="form-control" id="oauth-redirect" value="http://localhost:8000/api/v1/oauth/callback" />
+      </div>
+
+      <div id="oauth-login-url" style="display:none; margin-bottom:16px">
+        <div class="alert success" id="oauth-url-display"></div>
+      </div>
+    </div>
+
+    <!-- ============ WEBHOOK PAGE ============ -->
+    <div class="page" id="page-webhook">
+      <div class="module-page-header">
+        <div class="module-page-icon">🪝</div>
+        <div>
+          <div class="module-page-title">Webhook Gateway</div>
+          <div class="module-page-subtitle">Centralized webhook ingestion with signature verification (M23)</div>
+        </div>
+        <div class="module-page-status">
+          <div class="card-status unknown" id="webhook-badge">Unknown</div>
+        </div>
+      </div>
+
+      <div class="endpoint-list">
+
+        <div class="endpoint-card" id="ep-wh-fb">
+          <div class="endpoint-header" onclick="toggleEndpoint('wh-fb')">
+            <span class="http-badge GET">GET</span>
+            <span class="endpoint-path">/api/v1/facebook/webhook</span>
+            <span class="endpoint-desc">Facebook webhook verification challenge</span>
+            <div class="endpoint-run-status" id="erun-wh-fb"></div>
+          </div>
+          <div class="endpoint-body" id="body-wh-fb">
+            <div class="form-row">
+              <div class="form-group">
+                <label class="form-label">Hub Mode</label>
+                <input class="form-control" id="wh-mode" value="subscribe" />
+              </div>
+              <div class="form-group">
+                <label class="form-label">Verify Token</label>
+                <input class="form-control" id="wh-token" placeholder="your_verify_token_from_env" />
+              </div>
+            </div>
+            <div class="form-group">
+              <label class="form-label">Challenge</label>
+              <input class="form-control" id="wh-challenge" value="test_challenge_123" />
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callWebhookVerify()">▶ Test Verification</button>
+            </div>
+            <div class="response-panel" id="resp-wh-fb" style="display:none"></div>
+          </div>
+        </div>
+
+        <div class="endpoint-card" id="ep-wh-tg">
+          <div class="endpoint-header" onclick="toggleEndpoint('wh-tg')">
+            <span class="http-badge POST">POST</span>
+            <span class="endpoint-path">/api/v1/telegram/webhook</span>
+            <span class="endpoint-desc">Simulate a Telegram update event</span>
+            <div class="endpoint-run-status" id="erun-wh-tg"></div>
+          </div>
+          <div class="endpoint-body" id="body-wh-tg">
+            <div class="form-group">
+              <label class="form-label">Telegram Update JSON</label>
+              <textarea class="form-control" id="wh-tg-payload" rows="10" style="font-size:11px">{
+  "update_id": 123456789,
+  "message": {
+    "message_id": 1,
+    "from": { "id": 987654321, "username": "testuser" },
+    "chat": { "id": -1001234567890, "type": "group" },
+    "text": "Hello bot!",
+    "date": 1750000000
+  }
+}</textarea>
+            </div>
+            <div class="form-actions">
+              <button class="btn primary" onclick="callTGWebhookTest()">▶ Send Event</button>
+            </div>
+            <div class="response-panel" id="resp-wh-tg" style="display:none"></div>
+          </div>
+        </div>
+
+      </div>
+    </div>
+
+    <!-- ===================== LOG PANEL ===================== -->
+    <div id="log-panel">
+      <div class="log-header">
+        <span class="log-title">API Request Log</span>
+        <span id="log-count" style="color:var(--text-muted);font-size:11px">0 requests</span>
+        <div class="log-controls">
+          <button class="btn" onclick="exportLog()" data-tip="Export log as JSON">⬇ Export</button>
+          <button class="btn danger" onclick="clearLog()">✕ Clear</button>
+        </div>
+      </div>
+      <div id="log-entries"></div>
+    </div>
+
+  </main>
+</div>
+
+<script>
+/* ============================================================
+   CONFIGURATION
+============================================================ */
+const CONFIG = {
+  get baseUrl() { return document.getElementById('base-url').value.replace(/\/$/, ''); },
+  get token() { return document.getElementById('auth-token').value; },
+};
+
+let logEntries = [];
+let callCount = 0;
+let healthyCount = 0;
+let errorCount = 0;
+let degradedCount = 0;
+let refreshTimer = null;
+let countdown = 30;
+
+/* ============================================================
+   MODULE DEFINITIONS
+============================================================ */
+const MODULES = [
+  {
+    id: 'health',
+    name: 'Health Check',
+    icon: '💚',
+    desc: 'System-wide health endpoint',
+    endpoints: ['GET /health'],
+    checkFn: checkHealth,
+  },
+  {
+    id: 'ai',
+    name: 'AI Provider',
+    icon: '🧠',
+    desc: 'Chat, Embedding, Image, Vision — OpenAI/Google/Anthropic/Ollama',
+    endpoints: ['POST /ai/chat', 'POST /ai/embedding', 'GET /ai/capabilities'],
+    checkFn: checkAI,
+  },
+  {
+    id: 'rag',
+    name: 'RAG Pipeline',
+    icon: '📚',
+    desc: 'Document indexing, hybrid retrieval, Q&A generation',
+    endpoints: ['POST /rag/upload', 'POST /rag/query'],
+    checkFn: checkRAG,
+  },
+  {
+    id: 'facebook',
+    name: 'Facebook',
+    icon: '📘',
+    desc: 'Post, Message, Comment, Insights, Webhook',
+    endpoints: ['POST /facebook/post', 'POST /facebook/message'],
+    checkFn: checkFacebook,
+  },
+  {
+    id: 'telegram',
+    name: 'Telegram',
+    icon: '✈️',
+    desc: 'Bot messaging, media, inline keyboards, webhook',
+    endpoints: ['POST /telegram/send', 'GET /telegram/bot/info'],
+    checkFn: checkTelegram,
+  },
+  {
+    id: 'youtube',
+    name: 'YouTube',
+    icon: '▶️',
+    desc: 'Video upload, playlists, comments, analytics',
+    endpoints: ['POST /youtube/upload', 'POST /youtube/playlists'],
+    checkFn: () => 'unknown',
+  },
+  {
+    id: 'tiktok',
+    name: 'TikTok',
+    icon: '🎵',
+    desc: 'Video publish, creator info, analytics',
+    endpoints: ['POST /tiktok/upload', 'GET /tiktok/creator/info'],
+    checkFn: () => 'unknown',
+  },
+  {
+    id: 'workflow',
+    name: 'Workflow Engine',
+    icon: '⚙️',
+    desc: 'JSON/YAML workflow execution with nodes: AI, RAG, Social, Condition, Approval',
+    endpoints: ['POST /workflow/execute'],
+    checkFn: () => 'unknown',
+  },
+  {
+    id: 'agent',
+    name: 'AI Agent',
+    icon: '🤖',
+    desc: 'ReAct agent with tool calling: RAG, HTTP, Calculator, Social',
+    endpoints: ['POST /ai/chat'],
+    checkFn: () => 'unknown',
+  },
+  {
+    id: 'oauth',
+    name: 'OAuth Manager',
+    icon: '🔐',
+    desc: 'Facebook, Google/YouTube, TikTok OAuth2 flows with auto-refresh',
+    endpoints: ['GET /oauth/*/login', 'GET /oauth/*/callback'],
+    checkFn: () => 'unknown',
+  },
+  {
+    id: 'webhook',
+    name: 'Webhook Gateway',
+    icon: '🪝',
+    desc: 'HMAC signature verification, deduplication, event dispatch',
+    endpoints: ['POST /facebook/webhook', 'POST /telegram/webhook'],
+    checkFn: () => 'unknown',
+  },
+];
+
+/* ============================================================
+   API HELPER
+============================================================ */
+async function apiCall(method, path, body = null, options = {}) {
+  const url = CONFIG.baseUrl + path;
+  const start = Date.now();
+
+  const headers = { 'Content-Type': 'application/json' };
+  if (CONFIG.token) headers['Authorization'] = `Bearer ${CONFIG.token}`;
+  if (options.headers) Object.assign(headers, options.headers);
+
+  let fetchOpts = { method, headers };
+  if (body && method !== 'GET') {
+    if (body instanceof FormData) {
+      delete headers['Content-Type'];
+      fetchOpts.body = body;
+    } else {
+      fetchOpts.body = JSON.stringify(body);
+    }
+  }
+
+  try {
+    const resp = await fetch(url, fetchOpts);
+    const elapsed = Date.now() - start;
+    let data;
+    try { data = await resp.json(); } catch { data = { raw: await resp.text() }; }
+
+    addLog(method, path, resp.status, elapsed, data);
+    callCount++;
+    document.getElementById('stat-calls').textContent = callCount;
+
+    return { ok: resp.ok, status: resp.status, data, elapsed };
+  } catch (err) {
+    addLog(method, path, 0, Date.now() - start, { error: err.message });
+    return { ok: false, status: 0, data: { error: err.message }, elapsed: 0 };
+  }
+}
+
+/* ============================================================
+   RESPONSE DISPLAY
+============================================================ */
+function renderResponse(panelId, result) {
+  const panel = document.getElementById(panelId);
+  if (!panel) return;
+  panel.style.display = 'block';
+
+  const statusClass = result.ok ? 'ok' : (result.status >= 500 ? 'error' : 'warn');
+  const statusLabel = result.ok ? '✓ Success' : '✕ Error';
+
+  panel.innerHTML = `
+    <div class="response-header">
+      <span class="status-code ${statusClass}">${result.status || 'ERR'}</span>
+      <span style="color:var(--text-secondary)">${statusLabel}</span>
+      <span style="color:var(--text-muted);font-size:10px;margin-left:auto">${result.elapsed}ms</span>
+      <button class="btn" style="padding:2px 8px;font-size:10px" onclick="copyResponse('${panelId}')">📋 Copy</button>
+    </div>
+    <div class="response-tabs">
+      <div class="rtab active" onclick="switchRTab(this, '${panelId}-body')">Response</div>
+      <div class="rtab" onclick="switchRTab(this, '${panelId}-raw')">Raw JSON</div>
+    </div>
+    <div class="response-body active" id="${panelId}-body">${syntaxHighlight(result.data)}</div>
+    <div class="response-body" id="${panelId}-raw">${JSON.stringify(result.data, null, 2)}</div>
+  `;
+}
+
+function switchRTab(el, targetId) {
+  const panel = el.closest('.response-panel');
+  panel.querySelectorAll('.rtab').forEach(t => t.classList.remove('active'));
+  panel.querySelectorAll('.response-body').forEach(b => b.classList.remove('active'));
+  el.classList.add('active');
+  document.getElementById(targetId)?.classList.add('active');
+}
+
+function copyResponse(panelId) {
+  const rawEl = document.getElementById(panelId + '-raw');
+  if (rawEl) {
+    navigator.clipboard.writeText(rawEl.textContent);
+  }
+}
+
+function syntaxHighlight(json) {
+  let str = JSON.stringify(json, null, 2);
+  str = str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  return str.replace(
+    /("(\\u[a-zA-Z0-9]{4}|\\[^u]|[^\\"])*"(\s*:)?|\b(true|false|null)\b|-?\d+(?:\.\d*)?(?:[eE][+\-]?\d+)?)/g,
+    (match) => {
+      let cls = 'json-num';
+      if (/^"/.test(match)) {
+        cls = /:$/.test(match) ? 'json-key' : 'json-str';
+      } else if (/true|false/.test(match)) {
+        cls = 'json-bool';
+      } else if (/null/.test(match)) {
+        cls = 'json-null';
+      }
+      return `<span class="${cls}">${match}</span>`;
+    }
+  );
+}
+
+/* ============================================================
+   LOG
+============================================================ */
+function addLog(method, path, status, elapsed, data) {
+  const now = new Date();
+  const time = now.toTimeString().split(' ')[0] + '.' + String(now.getMilliseconds()).padStart(3,'0');
+  logEntries.push({ time, method, path, status, elapsed, data });
+
+  const statusClass = status >= 200 && status < 300 ? 'ok' : (status >= 500 || !status ? 'error' : 'warn');
+  const entry = document.createElement('div');
+  entry.className = 'log-entry';
+  entry.innerHTML = `
+    <span class="log-time">${time}</span>
+    <span class="log-method ${method}">${method}</span>
+    <span class="log-path">${path}</span>
+    <div class="log-status">
+      <span class="status-code ${statusClass}">${status || 'ERR'}</span>
+      <span class="log-ms">${elapsed}ms</span>
+    </div>
+  `;
+
+  const logEl = document.getElementById('log-entries');
+  logEl.appendChild(entry);
+  logEl.scrollTop = logEl.scrollHeight;
+  document.getElementById('log-count').textContent = `${logEntries.length} requests`;
+}
+
+function clearLog() {
+  logEntries = [];
+  document.getElementById('log-entries').innerHTML = '';
+  document.getElementById('log-count').textContent = '0 requests';
+}
+
+function exportLog() {
+  const blob = new Blob([JSON.stringify(logEntries, null, 2)], { type: 'application/json' });
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(blob);
+  a.download = `api-log-${Date.now()}.json`;
+  a.click();
+}
+
+/* ============================================================
+   NAVIGATION
+============================================================ */
+function showPage(pageId) {
+  document.querySelectorAll('.page').forEach(p => p.classList.remove('active'));
+  document.querySelectorAll('.sidebar-item').forEach(i => i.classList.remove('active'));
+  document.getElementById('page-' + pageId)?.classList.add('active');
+  document.getElementById('nav-' + pageId)?.classList.add('active');
+}
+
+function toggleEndpoint(id) {
+  const header = document.getElementById('ep-' + id)?.querySelector('.endpoint-header');
+  const body = document.getElementById('body-' + id);
+  if (!body) return;
+  const isOpen = body.classList.contains('open');
+  body.classList.toggle('open', !isOpen);
+  header?.classList.toggle('open', !isOpen);
+}
+
+/* ============================================================
+   HEALTH CHECKS
+============================================================ */
+function setModuleStatus(id, status, latency = null) {
+  const dot = document.getElementById('dot-' + id);
+  const badge = document.getElementById(id + '-badge');
+
+  if (dot) {
+    dot.className = `status-dot ${status}`;
+  }
+  if (badge) {
+    badge.className = `card-status ${status}`;
+    badge.textContent = status.charAt(0).toUpperCase() + status.slice(1);
+    if (latency) badge.textContent += ` (${latency}ms)`;
+  }
+}
+
+async function checkHealth() {
+  setModuleStatus('health', 'checking');
+  const result = await apiCall('GET', '/health');
+
+  if (result.ok) {
+    setModuleStatus('health', 'healthy', result.elapsed);
+    updateSystemBadge(result.data);
+    updateServicesTable(result.data);
+    return 'healthy';
+  } else if (result.status === 0) {
+    setModuleStatus('health', 'error');
+    updateSystemBadge(null);
+    return 'error';
+  } else {
+    setModuleStatus('health', 'degraded', result.elapsed);
+    return 'degraded';
+  }
+}
+
+async function checkAI() {
+  setModuleStatus('ai', 'checking');
+  const result = await apiCall('GET', '/api/v1/ai/capabilities');
+  if (result.ok) {
+    setModuleStatus('ai', 'healthy', result.elapsed);
+    return 'healthy';
+  } else if (result.status === 0) {
+    setModuleStatus('ai', 'error');
+    return 'error';
+  } else {
+    // API is up but maybe needs key
+    setModuleStatus('ai', 'degraded', result.elapsed);
+    return 'degraded';
+  }
+}
+
+async function checkRAG() {
+  setModuleStatus('rag', 'checking');
+  // RAG health = system health + vector DB
+  const result = await apiCall('GET', '/health');
+  if (result.status === 0) { setModuleStatus('rag', 'error'); return 'error'; }
+  const vectorStatus = result.data?.services?.chroma || result.data?.services?.faiss;
+  if (vectorStatus === 'healthy') {
+    setModuleStatus('rag', 'healthy', result.elapsed);
+    return 'healthy';
+  } else if (vectorStatus === 'unhealthy') {
+    setModuleStatus('rag', 'degraded');
+    return 'degraded';
+  } else {
+    setModuleStatus('rag', 'unknown');
+    return 'unknown';
+  }
+}
+
+async function checkFacebook() {
+  setModuleStatus('facebook', 'checking');
+  const result = await apiCall('GET', '/api/v1/facebook/page');
+  if (result.status === 0) { setModuleStatus('facebook', 'error'); return 'error'; }
+  if (result.ok) { setModuleStatus('facebook', 'healthy', result.elapsed); return 'healthy'; }
+  if (result.status === 502 || result.data?.error?.code === 'PROVIDER_ERROR') {
+    setModuleStatus('facebook', 'degraded');
+    return 'degraded';
+  }
+  setModuleStatus('facebook', 'error'); return 'error';
+}
+
+async function checkTelegram() {
+  setModuleStatus('telegram', 'checking');
+  const result = await apiCall('GET', '/api/v1/telegram/bot/info');
+  if (result.status === 0) { setModuleStatus('telegram', 'error'); return 'error'; }
+  if (result.ok) { setModuleStatus('telegram', 'healthy', result.elapsed); return 'healthy'; }
+  if (result.status === 502) { setModuleStatus('telegram', 'degraded'); return 'degraded'; }
+  setModuleStatus('telegram', 'error'); return 'error';
+}
+
+function updateSystemBadge(data) {
+  const badge = document.getElementById('system-badge');
+  const dot = document.getElementById('system-dot');
+  const text = document.getElementById('system-text');
+
+  if (!data) {
+    badge.className = 'down'; dot.className = 'status-dot error';
+    text.textContent = 'Offline'; return;
+  }
+
+  const s = data.status || 'unknown';
+  badge.className = s;
+  dot.className = 'status-dot ' + (s === 'healthy' ? 'healthy' : s === 'degraded' ? 'degraded' : 'error');
+  text.textContent = s.charAt(0).toUpperCase() + s.slice(1) + ' — v' + (data.version || '?');
+}
+
+function updateServicesTable(data) {
+  const tbody = document.getElementById('services-table');
+  if (!tbody) return;
+  const services = data?.services || {};
+  tbody.innerHTML = Object.entries(services).map(([name, status]) => {
+    const cls = status === 'healthy' ? 'green' : 'red';
+    const dot = status === 'healthy'
+      ? '<div class="status-dot healthy" style="display:inline-block"></div>'
+      : '<div class="status-dot error" style="display:inline-block"></div>';
+    return `
+      <tr>
+        <td class="mono">${name}</td>
+        <td>${dot} <span style="color:var(--${cls})">${status}</span></td>
+        <td class="mono">—</td>
+        <td style="color:var(--text-muted)">—</td>
+      </tr>
+    `;
+  }).join('');
+
+  if (!Object.keys(services).length) {
+    tbody.innerHTML = '<tr><td colspan="4" style="color:var(--text-muted);text-align:center">No service data</td></tr>';
+  }
+}
+
+async function runAllHealthChecks() {
+  const btn = document.getElementById('refresh-btn');
+  btn.classList.add('spinning');
+  btn.disabled = true;
+
+  // Reset counts
+  healthyCount = 0; degradedCount = 0; errorCount = 0;
+
+  // Set all to checking
+  MODULES.forEach(m => {
+    if (typeof m.checkFn === 'function') {
+      document.getElementById('dot-' + m.id)?.classList.add('checking');
+    }
+  });
+
+  // Run health checks
+  const results = await Promise.allSettled(
+    MODULES.map(m => typeof m.checkFn === 'function' ? m.checkFn() : Promise.resolve('unknown'))
+  );
+
+  results.forEach((r, i) => {
+    const status = r.value || 'unknown';
+    if (status === 'healthy') healthyCount++;
+    else if (status === 'degraded') degradedCount++;
+    else if (status === 'error') errorCount++;
+
+    // Set unknown statuses
+    if (status === 'unknown') {
+      setModuleStatus(MODULES[i].id, 'unknown');
+    }
+  });
+
+  // Update stats
+  document.getElementById('stat-healthy').textContent = healthyCount;
+  document.getElementById('stat-degraded').textContent = degradedCount;
+  document.getElementById('stat-error').textContent = errorCount;
+
+  // Render dashboard cards
+  renderDashboardCards(results);
+
+  btn.classList.remove('spinning');
+  btn.disabled = false;
+
+  // Reset countdown
+  countdown = 30;
+}
+
+function renderDashboardCards(results) {
+  const grid = document.getElementById('module-grid');
+  if (!grid) return;
+
+  grid.innerHTML = MODULES.map((m, i) => {
+    const status = results[i]?.value || 'unknown';
+    const statusLabels = { healthy: 'Healthy', degraded: 'Degraded', error: 'Offline', unknown: 'Unknown', checking: 'Checking…' };
+
+    return `
+      <div class="module-card ${status}" onclick="showPage('${m.id}')">
+        <div class="card-header">
+          <div class="card-title">
+            <span class="card-icon">${m.icon}</span>
+            ${m.name}
+          </div>
+          <div class="card-status ${status}">${statusLabels[status] || status}</div>
+        </div>
+        <div class="card-desc">${m.desc}</div>
+        <div class="card-meta">
+          ${m.endpoints.slice(0, 3).map(e => `<span class="endpoint-tag">${e}</span>`).join('')}
+        </div>
+      </div>
+    `;
+  }).join('');
+}
+
+/* ============================================================
+   MODULE API CALLS
+============================================================ */
+
+// Health
+async function callHealth() {
+  const result = await apiCall('GET', '/health');
+  renderResponse('resp-health', result);
+  setRunStatus('health', result.ok);
+}
+
+// AI: Capabilities
+async function callCapabilities() {
+  const result = await apiCall('GET', '/api/v1/ai/capabilities');
+  renderResponse('resp-capabilities', result);
+  setRunStatus('capabilities', result.ok);
+}
+
+// AI: Chat
+async function callChat() {
+  const model = document.getElementById('chat-model').value;
+  const temperature = parseFloat(document.getElementById('chat-temp').value);
+  const message = document.getElementById('chat-message').value;
+  const system = document.getElementById('chat-system').value;
+
+  if (!message.trim()) { alert('Message is required'); return; }
+
+  const messages = [];
+  if (system.trim()) messages.push({ role: 'system', content: system });
+  messages.push({ role: 'user', content: message });
+
+  const body = { messages, temperature };
+  if (model.trim()) body.model = model;
+
+  const result = await apiCall('POST', '/api/v1/ai/chat', body);
+  renderResponse('resp-chat', result);
+  setRunStatus('chat', result.ok);
+}
+
+// AI: Stream
+async function callChatStream() {
+  const message = document.getElementById('chat-message').value;
+  if (!message.trim()) { alert('Message is required'); return; }
+
+  const streamDiv = document.getElementById('stream-output');
+  streamDiv.style.display = 'block';
+  streamDiv.textContent = '';
+
+  const url = CONFIG.baseUrl + '/api/v1/ai/chat/stream';
+  const headers = { 'Content-Type': 'application/json' };
+  if (CONFIG.token) headers['Authorization'] = `Bearer ${CONFIG.token}`;
+
+  const system = document.getElementById('chat-system').value;
+  const messages = [];
+  if (system.trim()) messages.push({ role: 'system', content: system });
+  messages.push({ role: 'user', content: message });
+
+  try {
+    const resp = await fetch(url, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({ messages, temperature: 0.7, stream: true }),
+    });
+
+    const reader = resp.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      const chunk = decoder.decode(value);
+      const lines = chunk.split('\n');
+      for (const line of lines) {
+        if (line.startsWith('data: ') && line !== 'data: [DONE]') {
+          streamDiv.textContent += line.slice(6);
+          streamDiv.scrollTop = streamDiv.scrollHeight;
+        }
+      }
+    }
+
+    addLog('POST', '/api/v1/ai/chat/stream', 200, 0, { streamed: true });
+  } catch (err) {
+    streamDiv.textContent = 'Error: ' + err.message;
+  }
+}
+
+// AI: Embedding
+async function callEmbedding() {
+  const rawTexts = document.getElementById('embed-texts').value;
+  const texts = rawTexts.split('\n').map(t => t.trim()).filter(Boolean);
+  if (!texts.length) { alert('At least one text is required'); return; }
+
+  const result = await apiCall('POST', '/api/v1/ai/embedding', { texts });
+  renderResponse('resp-embedding', result);
+  setRunStatus('embedding', result.ok);
+}
+
+// AI: Image
+async function callImage() {
+  const prompt = document.getElementById('img-prompt').value;
+  if (!prompt.trim()) { alert('Prompt is required'); return; }
+
+  const result = await apiCall('POST', '/api/v1/ai/image', {
+    prompt,
+    size: document.getElementById('img-size').value,
+    quality: document.getElementById('img-quality').value,
+    n: 1,
+  });
+
+  renderResponse('resp-image', result);
+  setRunStatus('image', result.ok);
+
+  if (result.ok && result.data?.images?.length) {
+    const imgEl = document.getElementById('img-result');
+    imgEl.src = result.data.images[0];
+    document.getElementById('img-preview').style.display = 'block';
+  }
+}
+
+// RAG: Upload
+async function callRAGUpload() {
+  const fileInput = document.getElementById('rag-file');
+  const textContent = document.getElementById('rag-text-content').value;
+  const collection = document.getElementById('rag-collection').value || 'default';
+
+  if (!fileInput.files.length && !textContent.trim()) {
+    alert('Please select a file or paste text content');
+    return;
+  }
+
+  const formData = new FormData();
+  formData.append('collection', collection);
+
+  if (fileInput.files.length) {
+    formData.append('file', fileInput.files[0]);
+  } else {
+    // Create a text blob
+    const blob = new Blob([textContent], { type: 'text/plain' });
+    formData.append('file', blob, 'sample.txt');
+  }
+
+  const start = Date.now();
+  const url = CONFIG.baseUrl + '/api/v1/rag/upload';
+  const headers = {};
+  if (CONFIG.token) headers['Authorization'] = `Bearer ${CONFIG.token}`;
+
+  try {
+    const resp = await fetch(url, { method: 'POST', headers, body: formData });
+    const data = await resp.json();
+    const elapsed = Date.now() - start;
+    const result = { ok: resp.ok, status: resp.status, data, elapsed };
+    addLog('POST', '/api/v1/rag/upload', resp.status, elapsed, data);
+    renderResponse('resp-rag-upload', result);
+    setRunStatus('rag-upload', resp.ok);
+  } catch (err) {
+    const result = { ok: false, status: 0, data: { error: err.message }, elapsed: 0 };
+    renderResponse('resp-rag-upload', result);
+  }
+}
+
+// RAG: Query
+async function callRAGQuery() {
+  const question = document.getElementById('rag-question').value;
+  if (!question.trim()) { alert('Question is required'); return; }
+
+  const body = {
+    question,
+    collection: document.getElementById('rag-query-collection').value || 'default',
+    top_k: parseInt(document.getElementById('rag-topk').value) || 5,
+  };
+  const system = document.getElementById('rag-system').value;
+  if (system.trim()) body.system_prompt = system;
+
+  const result = await apiCall('POST', '/api/v1/rag/query', body);
+  renderResponse('resp-rag-query', result);
+  setRunStatus('rag-query', result.ok);
+}
+
+// Facebook: Page
+async function callFBPage() {
+  const result = await apiCall('GET', '/api/v1/facebook/page');
+  renderResponse('resp-fb-page', result);
+  setRunStatus('fb-page', result.ok);
+}
+
+// Facebook: Post
+async function callFBPost() {
+  const content = document.getElementById('fb-content').value;
+  if (!content.trim()) { alert('Post content is required'); return; }
+
+  const body = { content };
+  const link = document.getElementById('fb-link').value;
+  if (link.trim()) body.link = link;
+
+  const result = await apiCall('POST', '/api/v1/facebook/post', body);
+  renderResponse('resp-fb-post', result);
+  setRunStatus('fb-post', result.ok);
+}
+
+// Facebook: Message
+async function callFBMessage() {
+  const recipient_id = document.getElementById('fb-recipient').value;
+  const text = document.getElementById('fb-msg-text').value;
+  if (!recipient_id.trim() || !text.trim()) { alert('Recipient ID and text are required'); return; }
+
+  const result = await apiCall('POST', '/api/v1/facebook/message', { recipient_id, text });
+  renderResponse('resp-fb-msg', result);
+  setRunStatus('fb-msg', result.ok);
+}
+
+// Telegram: Bot Info
+async function callTGInfo() {
+  const result = await apiCall('GET', '/api/v1/telegram/bot/info');
+  renderResponse('resp-tg-info', result);
+  setRunStatus('tg-info', result.ok);
+}
+
+// Telegram: Send
+async function callTGSend() {
+  const chat_id = document.getElementById('tg-chat-id').value;
+  const text = document.getElementById('tg-text').value;
+  const parse_mode = document.getElementById('tg-parse-mode').value;
+  if (!chat_id.trim() || !text.trim()) { alert('Chat ID and text are required'); return; }
+
+  const result = await apiCall('POST', '/api/v1/telegram/send', { chat_id, text, parse_mode });
+  renderResponse('resp-tg-send', result);
+  setRunStatus('tg-send', result.ok);
+}
+
+// Telegram: Set Webhook
+async function callTGWebhook() {
+  const url = document.getElementById('tg-webhook-url').value;
+  if (!url.trim()) { alert('Webhook URL is required'); return; }
+
+  const result = await apiCall('POST', '/api/v1/telegram/webhook/set', { url });
+  renderResponse('resp-tg-webhook', result);
+  setRunStatus('tg-webhook', result.ok);
+}
+
+// YouTube: Upload
+async function callYTUpload() {
+  const token = document.getElementById('yt-token').value;
+  const title = document.getElementById('yt-title').value;
+  if (!token.trim()) { alert('YouTube access token is required'); return; }
+  if (!title.trim()) { alert('Video title is required'); return; }
+
+  const body = {
+    title,
+    description: document.getElementById('yt-desc').value,
+    video_url: document.getElementById('yt-video-url').value || null,
+    privacy_status: document.getElementById('yt-privacy').value,
+  };
+
+  const result = await apiCall('POST', '/api/v1/youtube/upload', body, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  renderResponse('resp-yt-upload', result);
+  setRunStatus('yt-upload', result.ok);
+}
+
+// YouTube: Playlist
+async function callYTPlaylist() {
+  const token = document.getElementById('yt-token').value;
+  const title = document.getElementById('yt-pl-title').value;
+  if (!token.trim()) { alert('YouTube access token is required'); return; }
+  if (!title.trim()) { alert('Playlist title is required'); return; }
+
+  const result = await apiCall('POST', '/api/v1/youtube/playlists', {
+    title,
+    description: document.getElementById('yt-pl-desc').value,
+    privacy_status: 'public',
+  }, { headers: { Authorization: `Bearer ${token}` } });
+  renderResponse('resp-yt-playlist', result);
+  setRunStatus('yt-playlist', result.ok);
+}
+
+// TikTok: Info
+async function callTTInfo() {
+  const token = document.getElementById('tt-token').value;
+  if (!token.trim()) { alert('TikTok access token is required'); return; }
+
+  const result = await apiCall('GET', '/api/v1/tiktok/creator/info', null, {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  renderResponse('resp-tt-info', result);
+  setRunStatus('tt-info', result.ok);
+}
+
+// TikTok: Upload
+async function callTTUpload() {
+  const token = document.getElementById('tt-token').value;
+  const video_url = document.getElementById('tt-video-url').value;
+  const title = document.getElementById('tt-title').value;
+  if (!token.trim()) { alert('TikTok access token is required'); return; }
+  if (!video_url.trim() || !title.trim()) { alert('Video URL and title are required'); return; }
+
+  const result = await apiCall('POST', '/api/v1/tiktok/upload', {
+    video_url, title,
+    privacy_level: document.getElementById('tt-privacy').value,
+  }, { headers: { Authorization: `Bearer ${token}` } });
+  renderResponse('resp-tt-upload', result);
+  setRunStatus('tt-upload', result.ok);
+}
+
+// Workflow
+async function callWorkflow() {
+  const jsonStr = document.getElementById('wf-json').value;
+  const contextStr = document.getElementById('wf-context').value;
+
+  if (!jsonStr.trim()) { alert('Workflow definition is required'); return; }
+
+  let workflow, initialContext;
+  try { workflow = JSON.parse(jsonStr); } catch { alert('Invalid workflow JSON'); return; }
+  try { initialContext = contextStr.trim() ? JSON.parse(contextStr) : {}; } catch { alert('Invalid context JSON'); return; }
+
+  // For demo, we test via AI chat (workflow execution requires Celery)
+  const result = await apiCall('POST', '/api/v1/ai/chat', {
+    messages: [
+      { role: 'system', content: 'You are a workflow validator. Confirm if this workflow definition looks valid.' },
+      { role: 'user', content: `Validate this workflow: ${JSON.stringify(workflow, null, 2)}` }
+    ],
+    temperature: 0.3,
+  });
+  renderResponse('resp-wf-validate', result);
+  setRunStatus('wf-validate', result.ok);
+}
+
+function loadExampleWorkflow() {
+  const example = {
+    id: 'demo_workflow',
+    name: 'Demo: RAG → AI → Telegram',
+    version: '1.0.0',
+    context: { collection: 'default' },
+    nodes: [
+      {
+        id: 'rag_query',
+        type: 'rag',
+        name: 'Query Knowledge Base',
+        config: { question_key: 'question', output_key: 'rag_answer', collection: 'default' },
+        on_success: 'ai_polish'
+      },
+      {
+        id: 'ai_polish',
+        type: 'ai',
+        name: 'Polish Response',
+        config: {
+          prompt_template: 'Based on: {{ rag_answer }}\n\nWrite a friendly reply to: {{ question }}',
+          output_key: 'final_reply'
+        },
+        on_success: 'send_telegram'
+      },
+      {
+        id: 'send_telegram',
+        type: 'social',
+        name: 'Send via Telegram',
+        config: { platform: 'telegram', content_key: 'final_reply', recipient_key: 'chat_id' }
+      }
+    ]
+  };
+  document.getElementById('wf-json').value = JSON.stringify(example, null, 2);
+}
+
+// Agent
+async function callAgent() {
+  const task = document.getElementById('agent-task').value;
+  const system = document.getElementById('agent-system').value;
+  if (!task.trim()) { alert('Task is required'); return; }
+
+  const result = await apiCall('POST', '/api/v1/ai/chat', {
+    messages: [
+      ...(system.trim() ? [{ role: 'system', content: system }] : []),
+      { role: 'user', content: task },
+    ],
+    temperature: 0.1,
+    max_tokens: 2048,
+  });
+  renderResponse('resp-agent-run', result);
+  setRunStatus('agent-run', result.ok);
+}
+
+// OAuth
+function openOAuthFlow(platform) {
+  const redirectUri = document.getElementById('oauth-redirect').value;
+  const platformUrls = {
+    facebook: `https://www.facebook.com/dialog/oauth?client_id=YOUR_APP_ID&redirect_uri=${encodeURIComponent(redirectUri)}&scope=pages_manage_posts,pages_messaging&response_type=code`,
+    google: `https://accounts.google.com/o/oauth2/v2/auth?client_id=YOUR_CLIENT_ID&redirect_uri=${encodeURIComponent(redirectUri)}&scope=https://www.googleapis.com/auth/youtube.upload&response_type=code&access_type=offline`,
+    tiktok: `https://www.tiktok.com/v2/auth/authorize?client_key=YOUR_CLIENT_KEY&redirect_uri=${encodeURIComponent(redirectUri)}&scope=video.publish&response_type=code`,
+  };
+
+  const url = platformUrls[platform];
+  document.getElementById('oauth-login-url').style.display = 'block';
+  document.getElementById('oauth-url-display').innerHTML =
+    `🔐 ${platform.charAt(0).toUpperCase() + platform.slice(1)} Login URL (configure credentials in .env first):<br><a href="${url}" target="_blank" style="color:var(--blue);word-break:break-all">${url}</a>`;
+}
+
+// Webhook verify
+async function callWebhookVerify() {
+  const mode = document.getElementById('wh-mode').value;
+  const token = document.getElementById('wh-token').value;
+  const challenge = document.getElementById('wh-challenge').value;
+
+  const params = new URLSearchParams({
+    'hub.mode': mode,
+    'hub.verify_token': token,
+    'hub.challenge': challenge,
+  });
+
+  const result = await apiCall('GET', `/api/v1/facebook/webhook?${params}`);
+  renderResponse('resp-wh-fb', result);
+  setRunStatus('wh-fb', result.ok);
+}
+
+// Telegram webhook event simulation
+async function callTGWebhookTest() {
+  const payloadStr = document.getElementById('wh-tg-payload').value;
+  let payload;
+  try { payload = JSON.parse(payloadStr); } catch { alert('Invalid JSON payload'); return; }
+
+  const result = await apiCall('POST', '/api/v1/telegram/webhook', payload);
+  renderResponse('resp-wh-tg', result);
+  setRunStatus('wh-tg', result.ok);
+}
+
+/* ============================================================
+   UTILITY
+============================================================ */
+function setRunStatus(id, ok) {
+  const el = document.getElementById('erun-' + id);
+  if (el) {
+    el.className = 'endpoint-run-status ' + (ok ? 'ok' : 'error');
+  }
+}
+
+/* ============================================================
+   AUTO-REFRESH TIMER
+============================================================ */
+function startRefreshTimer() {
+  clearInterval(refreshTimer);
+  countdown = 30;
+
+  refreshTimer = setInterval(() => {
+    countdown--;
+    document.getElementById('refresh-countdown').textContent = countdown + 's';
+    if (countdown <= 0) {
+      runAllHealthChecks();
+      countdown = 30;
+    }
+  }, 1000);
+}
+
+/* ============================================================
+   INIT
+============================================================ */
+window.addEventListener('load', () => {
+  // Set example content
+  document.getElementById('fb-content').value = 'Hello from AI Automation Platform! 🚀 This is a test post.';
+  document.getElementById('fb-msg-text').value = 'Hello from AI Platform! 🤖';
+  document.getElementById('tg-text').value = 'Hello from <b>AI Platform</b>! 🚀';
+
+  // Load example workflow
+  loadExampleWorkflow();
+
+  // Initial health check
+  runAllHealthChecks();
+
+  // Start auto-refresh
+  startRefreshTimer();
+
+  // Update dashboard subtitle with time
+  setInterval(() => {
+    const sub = document.getElementById('dash-subtitle');
+    if (sub) sub.textContent = `Last updated: ${new Date().toLocaleTimeString()} — auto-refreshes every 30s`;
+  }, 1000);
+});
+</script>
+</body>
+</html>
