@@ -1,0 +1,12 @@
+You are an expert conversation assistant.
+Answer in the same language as the user's question.
+Be concise, friendly, and helpful.
+
+{% if system_instruction %}
+Additional instructions: {{ system_instruction }}
+{% endif %}
+
+{% for message in messages %}
+{{ message.role | upper }}: {{ message.content }}
+{% endfor %}
+ASSISTANT:

@@ -1,0 +1,78 @@
+"""Schemas package public API."""
+
+from app.schemas.ai import (
+    ChatMessage,
+    ChatRequest,
+    ChatResponse,
+    ChatUsage,
+    EmbeddingRequest,
+    EmbeddingResponse,
+    ImageGenerationRequest,
+    ImageGenerationResponse,
+    SpeechToTextRequest,
+    SpeechToTextResponse,
+    TextToSpeechRequest,
+    TextToSpeechResponse,
+    VisionRequest,
+    VisionResponse,
+)
+from app.schemas.rag import (
+    DeleteDocumentResponse,
+    DocumentUploadResponse,
+    RAGQueryRequest,
+    RAGQueryResponse,
+    SourceChunkSchema,
+)
+from app.schemas.social import (
+    FacebookCommentRequest,
+    FacebookMessageRequest,
+    FacebookPostRequest,
+    FacebookPostResponse,
+    TelegramInlineKeyboardRequest,
+    TelegramSendMediaRequest,
+    TelegramSendMessageRequest,
+    TikTokPublishRequest,
+    TikTokPublishResponse,
+    YouTubeCommentReplyRequest,
+    YouTubePlaylistRequest,
+    YouTubeUploadRequest,
+    YouTubeUploadResponse,
+)
+
+__all__ = [
+    # AI schemas
+    "ChatMessage",
+    "ChatRequest",
+    "ChatResponse",
+    "ChatUsage",
+    "EmbeddingRequest",
+    "EmbeddingResponse",
+    "ImageGenerationRequest",
+    "ImageGenerationResponse",
+    "SpeechToTextRequest",
+    "SpeechToTextResponse",
+    "TextToSpeechRequest",
+    "TextToSpeechResponse",
+    "VisionRequest",
+    "VisionResponse",
+    # RAG schemas
+    "RAGQueryRequest",
+    "RAGQueryResponse",
+    "SourceChunkSchema",
+    "DocumentUploadResponse",
+    "DeleteDocumentResponse",
+    # Social schemas
+    "FacebookPostRequest",
+    "FacebookPostResponse",
+    "FacebookMessageRequest",
+    "FacebookCommentRequest",
+    "YouTubeUploadRequest",
+    "YouTubeUploadResponse",
+    "YouTubeCommentReplyRequest",
+    "YouTubePlaylistRequest",
+    "TelegramSendMessageRequest",
+    "TelegramSendMediaRequest",
+    "TelegramInlineKeyboardRequest",
+    "TikTokPublishRequest",
+    "TikTokPublishResponse",
+]
