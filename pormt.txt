@@ -1,0 +1,749 @@
+# ROLE
+
+Bạn là Principal Software Architect và Senior Python Engineer.
+
+Nhiệm vụ của bạn là thiết kế và triển khai **một framework AI Automation Platform** theo kiến trúc module hóa, production-ready, dễ mở rộng, tuân thủ SOLID, Clean Architecture và Domain Driven Design (DDD) ở mức hợp lý.
+
+Mục tiêu của project là tạo ra một nền tảng có thể tích hợp nhiều AI Provider, nhiều Social Platform và nhiều nguồn dữ liệu khác nhau mà không cần sửa code hiện có khi bổ sung provider mới.
+
+---
+
+# YÊU CẦU CHUNG
+
+Sử dụng:
+
+* Python 3.11+
+* FastAPI
+* Pydantic v2
+* SQLAlchemy 2.x
+* Alembic
+* httpx
+* LangChain hoặc LlamaIndex (nếu cần)
+* OpenAI SDK
+* Google GenAI SDK
+* FAISS hoặc ChromaDB
+* Redis
+* PostgreSQL
+* Docker
+* Docker Compose
+* pytest
+* pytest-asyncio
+* Ruff
+* Black
+* MyPy
+* pre-commit
+
+Toàn bộ code phải:
+
+* Type Hint 100%
+* Comment đầy đủ
+* Docstring chuẩn Google Style
+* Không hard-code
+* Tách config bằng `.env`
+* Logging đầy đủ
+* Exception rõ ràng
+* Async toàn bộ nơi có thể
+* Dễ unit test
+
+---
+
+# KIẾN TRÚC
+
+Áp dụng:
+
+* SOLID
+* Clean Architecture
+* Dependency Injection
+* Repository Pattern
+* Service Layer
+* Factory Pattern
+* Strategy Pattern
+* Adapter Pattern
+* Builder Pattern (nếu cần)
+* Interface (ABC)
+
+Tuyệt đối tránh:
+
+* God Class
+* Duplicate code
+* Business logic trong API
+* Business logic trong Controller
+* Business logic trong Repository
+
+---
+
+# CẤU TRÚC PROJECT
+
+```
+project/
+
+│
+├── app/
+│
+│   ├── api/
+│   │      v1/
+│   │
+│   ├── core/
+│   │      config.py
+│   │      logger.py
+│   │      security.py
+│   │      dependency.py
+│   │      exception.py
+│   │
+│   ├── database/
+│   │      session.py
+│   │      base.py
+│   │      models/
+│   │
+│   ├── common/
+│   │      enums/
+│   │      schemas/
+│   │      utils/
+│   │      constants/
+│   │
+│   ├── interfaces/
+│   │      ai_provider.py
+│   │      social_provider.py
+│   │      vector_database.py
+│   │      llm.py
+│   │
+│   ├── providers/
+│   │
+│   │      ai/
+│   │          openai_provider.py
+│   │          google_provider.py
+│   │
+│   │      social/
+│   │          facebook_provider.py
+│   │          tiktok_provider.py
+│   │          youtube_provider.py
+│   │          telegram_provider.py
+│   │
+│   │      vector/
+│   │          faiss_provider.py
+│   │          chroma_provider.py
+│   │
+│   ├── rag/
+│   │      document_loader.py
+│   │      embedding.py
+│   │      chunking.py
+│   │      retriever.py
+│   │      vector_store.py
+│   │      pipeline.py
+│   │
+│   ├── services/
+│   │      ai_service.py
+│   │      rag_service.py
+│   │      facebook_service.py
+│   │      youtube_service.py
+│   │      telegram_service.py
+│   │      tiktok_service.py
+│   │
+│   ├── repositories/
+│   │
+│   ├── models/
+│   │
+│   ├── schemas/
+│   │
+│   ├── workers/
+│   │
+│   ├── tasks/
+│   │
+│   ├── middleware/
+│   │
+│   ├── events/
+│   │
+│   ├── prompts/
+│   │
+│   └── main.py
+│
+├── tests/
+│
+│   ├── ai/
+│   ├── rag/
+│   ├── facebook/
+│   ├── youtube/
+│   ├── telegram/
+│   ├── tiktok/
+│   ├── api/
+│   └── integration/
+│
+├── docs/
+├── scripts/
+├── docker/
+├── migrations/
+├── requirements/
+├── .env.example
+├── docker-compose.yml
+├── Makefile
+└── README.md
+```
+
+---
+
+# MODULE 1
+
+## AI Provider
+
+Thiết kế interface
+
+```
+AIProvider
+```
+
+Bao gồm
+
+```
+chat()
+
+stream()
+
+embedding()
+
+image_generation()
+
+speech_to_text()
+
+text_to_speech()
+
+vision()
+```
+
+Sau đó triển khai
+
+OpenAIProvider
+
+GoogleProvider
+
+Thông qua Strategy Pattern.
+
+AIService chỉ làm việc với interface.
+
+Không phụ thuộc provider cụ thể.
+
+Có thể thêm Anthropic, DeepSeek, Azure OpenAI sau này mà không sửa code cũ.
+
+---
+
+# MODULE 2
+
+## RAG
+
+Thiết kế pipeline hoàn chỉnh
+
+Document Loader
+
+↓
+
+Text Cleaner
+
+↓
+
+Chunker
+
+↓
+
+Embedding
+
+↓
+
+Vector Database
+
+↓
+
+Retriever
+
+↓
+
+Prompt Builder
+
+↓
+
+LLM
+
+↓
+
+Answer
+
+Có thể thay đổi:
+
+* Embedding Model
+* Vector DB
+* Chunk Strategy
+* Retriever
+
+chỉ bằng config.
+
+Hỗ trợ:
+
+* PDF
+* DOCX
+* TXT
+* Markdown
+* HTML
+
+Có cache.
+
+Có metadata.
+
+Có score.
+
+---
+
+# MODULE 3
+
+## Facebook API
+
+Tạo module độc lập.
+
+Bao gồm:
+
+Authentication
+
+Refresh Token
+
+Page Management
+
+Post
+
+Edit Post
+
+Delete Post
+
+Upload Image
+
+Upload Video
+
+Comment
+
+Reply Comment
+
+Messenger
+
+Webhook
+
+Inbox
+
+Read Message
+
+Reply Message
+
+Quick Reply
+
+Get Insights
+
+Scheduler
+
+Error Handling
+
+Rate Limit
+
+Retry
+
+Không để business logic trong provider.
+
+Provider chỉ wrap API.
+
+Service xử lý logic.
+
+---
+
+# MODULE 4
+
+## TikTok API
+
+Module độc lập.
+
+Bao gồm
+
+Authentication
+
+Upload Video
+
+Draft
+
+Publish
+
+Comment
+
+Analytics
+
+Webhook
+
+Creator Info
+
+Refresh Token
+
+Retry
+
+Rate Limit
+
+---
+
+# MODULE 5
+
+## YouTube
+
+Google OAuth
+
+Upload Video
+
+Thumbnail
+
+Playlist
+
+Comment
+
+Reply Comment
+
+Analytics
+
+Caption
+
+Short
+
+Livestream
+
+Retry
+
+Rate Limit
+
+---
+
+# MODULE 6
+
+## Telegram
+
+Bot API
+
+Webhook
+
+Polling
+
+Receive Message
+
+Reply
+
+Inline Keyboard
+
+Media
+
+Document
+
+Photo
+
+Video
+
+Voice
+
+Markdown
+
+HTML
+
+Group
+
+Channel
+
+Scheduler
+
+---
+
+# MODULE 7
+
+## Prompt Management
+
+Thiết kế
+
+PromptManager
+
+Có thể
+
+Load Prompt
+
+Version
+
+Variable
+
+Template
+
+Jinja2
+
+Prompt History
+
+Prompt Cache
+
+---
+
+# MODULE 8
+
+## Configuration
+
+Config bằng
+
+```
+.env
+```
+
+Ví dụ
+
+```
+OPENAI_API_KEY=
+
+GOOGLE_API_KEY=
+
+FACEBOOK_APP_ID=
+
+FACEBOOK_APP_SECRET=
+
+FACEBOOK_PAGE_TOKEN=
+
+FACEBOOK_VERIFY_TOKEN=
+
+FACEBOOK_WEBHOOK_SECRET=
+
+TIKTOK_CLIENT_ID=
+
+TIKTOK_CLIENT_SECRET=
+
+YOUTUBE_CLIENT_SECRET=
+
+YOUTUBE_CLIENT_ID=
+
+TELEGRAM_BOT_TOKEN=
+
+DATABASE_URL=
+
+REDIS_URL=
+
+VECTOR_DB=
+
+EMBEDDING_PROVIDER=
+
+LLM_PROVIDER=
+```
+
+---
+
+# MODULE 9
+
+## Logging
+
+Sử dụng logging chuẩn.
+
+Có
+
+Console
+
+File
+
+JSON
+
+Request ID
+
+Execution Time
+
+Traceback
+
+---
+
+# MODULE 10
+
+## Exception
+
+Thiết kế
+
+```
+BaseException
+
+AuthenticationException
+
+RateLimitException
+
+APIException
+
+ValidationException
+
+RAGException
+
+ProviderException
+
+DatabaseException
+```
+
+---
+
+# MODULE 11
+
+## Dependency Injection
+
+Toàn bộ Service được inject.
+
+Không được khởi tạo trực tiếp trong Controller.
+
+---
+
+# MODULE 12
+
+## API
+
+FastAPI
+
+RESTful
+
+Swagger
+
+OpenAPI
+
+Versioning
+
+```
+/api/v1/
+```
+
+Ví dụ
+
+```
+POST /chat
+
+POST /embedding
+
+POST /rag/query
+
+POST /facebook/post
+
+POST /facebook/message
+
+POST /youtube/upload
+
+POST /telegram/send
+
+POST /tiktok/upload
+```
+
+---
+
+# MODULE 13
+
+## Test
+
+Viết đầy đủ test.
+
+```
+tests/
+
+ai/
+    test_openai.py
+    test_google.py
+
+rag/
+    test_chunk.py
+    test_embedding.py
+    test_retriever.py
+
+facebook/
+    test_post.py
+    test_message.py
+
+youtube/
+    test_upload.py
+
+telegram/
+    test_send.py
+
+tiktok/
+    test_upload.py
+
+api/
+    test_routes.py
+
+integration/
+```
+
+Mỗi module phải test độc lập.
+
+Mock API bên ngoài.
+
+Coverage >90%.
+
+---
+
+# MODULE 14
+
+## README
+
+Viết README đầy đủ gồm
+
+* Architecture
+* Folder Structure
+* Installation
+* Docker
+* Environment
+* Run
+* Test
+* Deployment
+* Sequence Diagram
+* Class Diagram
+
+---
+
+# MODULE 15
+
+## Docker
+
+Viết
+
+Dockerfile
+
+docker-compose
+
+Bao gồm
+
+* API
+* PostgreSQL
+* Redis
+* Vector DB (nếu cần)
+* Nginx
+
+---
+
+# MODULE 16
+
+## Chất lượng mã nguồn
+
+Toàn bộ project phải đáp ứng:
+
+* SOLID
+* DRY
+* KISS
+* Clean Code
+* Type Hint đầy đủ
+* Async I/O
+* Repository Pattern
+* Service Layer
+* Factory Pattern
+* Strategy Pattern
+* Adapter Pattern
+* Unit Test
+* Integration Test
+* Logging
+* Retry
+* Timeout
+* Circuit Breaker
+* Rate Limiter
+* Configurable
+* Production Ready
+
+---
+
+# NGUYÊN TẮC SINH CODE
+
+1. Không viết pseudo-code.
+2. Chỉ sinh code hoàn chỉnh có thể chạy.
+3. Mỗi class nằm trong một file riêng.
+4. Mỗi class có docstring và comment đầy đủ.
+5. Mỗi module phải độc lập.
+6. Không viết code trùng lặp.
+7. Tối ưu khả năng mở rộng.
+8. Sau khi hoàn thành một module, tiếp tục sinh module kế tiếp cho đến khi hoàn thành toàn bộ project.
+9. Nếu số lượng token không đủ, dừng tại cuối một file hoàn chỉnh và ở lần tiếp theo tiếp tục từ file kế tiếp, không viết lại các file đã hoàn thành.
+10. Luôn ưu tiên khả năng bảo trì và mở rộng lâu dài hơn là tối ưu ngắn hạn.
